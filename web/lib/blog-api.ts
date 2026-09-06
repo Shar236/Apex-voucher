@@ -31,7 +31,10 @@ export async function listPublicBlogPosts(params: { category?: string; search?: 
   const query = qs.toString();
 
   try {
-    const res = await fetch(`${apiBase()}/api/blog${query ? `?${query}` : ''}`, { next: { revalidate: REVALIDATE_SECONDS } });
+    const res = await fetch(`${apiBase()}/api/blog${query ? `?${query}` : ''}`, {
+      next: { revalidate: REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(3500),
+    });
     if (!res.ok) return { success: false, count: 0, total: 0, page: 1, pages: 1, hasMore: false, data: [] };
     return (await res.json()) as BlogListResponse;
   } catch {
@@ -41,7 +44,10 @@ export async function listPublicBlogPosts(params: { category?: string; search?: 
 
 export async function listBlogCategories(): Promise<BlogCategoryCount[]> {
   try {
-    const res = await fetch(`${apiBase()}/api/blog/categories`, { next: { revalidate: REVALIDATE_SECONDS } });
+    const res = await fetch(`${apiBase()}/api/blog/categories`, {
+      next: { revalidate: REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(3500),
+    });
     if (!res.ok) return [];
     const data = (await res.json()) as { success: boolean; data: BlogCategoryCount[] };
     return data.success ? data.data : [];
@@ -59,7 +65,10 @@ export async function listBlogCategories(): Promise<BlogCategoryCount[]> {
  */
 export async function getPublicBlogPost(slug: string): Promise<BlogPostResponse | null> {
   try {
-    const res = await fetch(`${apiBase()}/api/blog/${encodeURIComponent(slug)}`, { next: { revalidate: REVALIDATE_SECONDS } });
+    const res = await fetch(`${apiBase()}/api/blog/${encodeURIComponent(slug)}`, {
+      next: { revalidate: REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(3500),
+    });
     const data = (await res.json()) as BlogPostResponse;
     return data;
   } catch {

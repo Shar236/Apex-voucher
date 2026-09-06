@@ -64,6 +64,7 @@ export async function getWebsiteConfig(): Promise<WebsiteConfig> {
   try {
     const res = await fetch(`${apiBase()}/api/products/website-config`, {
       next: { revalidate: 300 },
+      signal: AbortSignal.timeout(3500),
     });
     if (!res.ok) return FALLBACK;
     const data = (await res.json()) as WebsiteConfig;

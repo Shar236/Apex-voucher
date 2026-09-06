@@ -32,7 +32,10 @@ export interface VideoListResponse {
 
 export async function listVideos(): Promise<VideoListResponse> {
   try {
-    const res = await fetch(`${apiBase()}/api/reels`, { next: { revalidate: 300 } });
+    const res = await fetch(`${apiBase()}/api/reels`, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(3500),
+    });
     if (!res.ok) return { success: false, count: 0, data: [], settings: { videoSectionEnabled: false, movieReelModeEnabled: false } };
     return (await res.json()) as VideoListResponse;
   } catch {

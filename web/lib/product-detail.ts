@@ -16,6 +16,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
   try {
     const res = await fetch(`${apiBase()}/api/products/${encodeURIComponent(slug)}`, {
       next: { revalidate: 300 },
+      signal: AbortSignal.timeout(3500),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as ProductDetailResponse;
@@ -28,7 +29,10 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
 
 export async function listProducts(): Promise<Product[]> {
   try {
-    const res = await fetch(`${apiBase()}/api/products`, { next: { revalidate: 300 } });
+    const res = await fetch(`${apiBase()}/api/products`, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(3500),
+    });
     if (!res.ok) return [];
     const data = (await res.json()) as { success: boolean; data: Product[] };
     return data.success ? data.data : [];

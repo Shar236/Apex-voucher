@@ -39,7 +39,10 @@ export async function listAwards(params: { page?: number; limit?: number; catego
   if (params.category) qs.set('category', params.category);
   const query = qs.toString();
   try {
-    const res = await fetch(`${apiBase()}/api/awards${query ? `?${query}` : ''}`, { next: { revalidate: 300 } });
+    const res = await fetch(`${apiBase()}/api/awards${query ? `?${query}` : ''}`, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(3500),
+    });
     if (!res.ok) return { success: false, count: 0, total: 0, featuredCount: 0, page: 1, pages: 1, hasMore: false, data: [] };
     return (await res.json()) as AwardListResponse;
   } catch {
