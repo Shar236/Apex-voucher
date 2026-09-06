@@ -20,7 +20,9 @@ export const config = {
   port: process.env.PORT || 5000,
   nodeEnv: (process.env.NODE_ENV || 'development').toLowerCase(),
   isProduction: (process.env.NODE_ENV || '').toLowerCase() === 'production',
-  mongodbUri: process.env.MONGODB_URI || '',
+  mongodbUri: (process.env.MONGODB_URI || '')
+    .trim()
+    .replace(/^mongodb(\+srv)?:\/\/\s+/, 'mongodb$1://'),
   jwtSecret:
     process.env.JWT_SECRET ||
     ((process.env.NODE_ENV || '').toLowerCase() === 'production'

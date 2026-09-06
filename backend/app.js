@@ -219,15 +219,15 @@ export const startServer = async () => {
   assertPaymentConfig(); // fail fast on a mis-configured payment gateway (esp. in production)
   emailConfigStatus();   // safe diagnostic — is transactional email able to send?
   await connectDB();
+  const port = config.port;
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`[server] Apex Vouchers API listening on http://localhost:${port}`);
+  });
   await seedAdmin();
   await ensureDefaultPages();
   await ensureVoucherSchemaConsistency();
   await migrateBlogPosts();
   startBlogScheduler();
-  const port = config.port;
-  app.listen(port, () => {
-    console.log(`[server] Apex Vouchers API listening on http://localhost:${port}`);
-  });
   return app;
 };
 
