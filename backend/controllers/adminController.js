@@ -15,7 +15,7 @@ import {
   getVoucherRequestStats,
 } from '../services/voucherRequestService.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { hashPassword } from '../middleware/auth.js';
+import { hashPassword, comparePassword } from '../middleware/auth.js';
 import { isValidObjectId } from '../config/db.js';
 import { escapeRegex } from '../utils/index.js';
 import { sendOrderConfirmation, sendEmail, emailConfigStatus } from '../services/email.js';
@@ -2227,8 +2227,38 @@ export const seedAdmin = async () => {
     // Ignore error if schema validation issue on old docs
   }
 
-  const exists = await User.findOne({ role: 'admin' });
-  if (exists) return exists;
+  let admin = await User.findOne({ email: config.admin.email.toLowerCase() }).select('+passwordHash');
+  if (!admin) {
+    admin = await User.findOne({ role: 'admin' }).select('+passwordHash');
+  }
+
+  if (admin) {
+    let changed = false;
+    if (admin.role !== 'admin') {
+      admin.role = 'admin';
+      changed = true;
+    }
+    if (admin.status !== 'active') {
+      admin.status = 'active';
+      changed = true;
+    }
+    if (!admin.emailVerified) {
+      admin.emailVerified = true;
+      changed = true;
+    }
+    if (config.admin.password) {
+      const match = await comparePassword(config.admin.password, admin.passwordHash);
+      if (!match) {
+        admin.passwordHash = await hashPassword(config.admin.password);
+        changed = true;
+        console.log(`[seed] admin password synchronized with config for: ${admin.email}`);
+      }
+    }
+    if (changed) {
+      await admin.save();
+    }
+    return admin;
+  }
 
   // Backfill: pre-existing users created before email verification existed have
   // no `emailVerified` field; treat them as verified so the login gate doesn't
@@ -2239,17 +2269,17 @@ export const seedAdmin = async () => {
     // Non-fatal: only affects legacy accounts that never went through verification.
   }
 
-  const admin = new User({
+  const newAdmin = new User({
     name: config.admin.name,
-    email: config.admin.email,
+    email: config.admin.email.toLowerCase(),
     passwordHash: await hashPassword(config.admin.password),
     role: 'admin',
     status: 'active',
     emailVerified: true,
   });
-  await admin.save();
-  console.log(`[seed] admin created: ${admin.email}`);
-  return admin;
+  await newAdmin.save();
+  console.log(`[seed] admin created: ${newAdmin.email}`);
+  return newAdmin;
 };
 
 const formatYoutubeEmbed = (url) => {

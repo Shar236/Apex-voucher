@@ -12,7 +12,22 @@ export interface ApiResponse<T = unknown> {
   [key: string]: unknown;
 }
 
-export const apiBase = () => siteConfig.apiUrl;
+export const apiBase = () => {
+  if (typeof window !== 'undefined') {
+    const configured = siteConfig.apiUrl;
+    if (
+      configured &&
+      configured.includes('localhost') &&
+      window.location.hostname &&
+      window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1'
+    ) {
+      return configured.replace('localhost', window.location.hostname);
+    }
+    return configured;
+  }
+  return siteConfig.apiUrl;
+};
 
 const storage = () => {
   if (typeof window === 'undefined' || !window.localStorage) return null;
@@ -96,11 +111,25 @@ export const request = async <T = unknown>(
   try {
     resp = await fetch(fullUrl, { ...options, headers });
   } catch (err) {
-    return {
-      success: false,
-      message: `Network error: ${err instanceof Error ? err.message : String(err)}`,
-      code: 'NETWORK',
-    };
+    // If direct request failed (e.g. CORS block, device hostname mismatch),
+    // and we are in the browser with a relative route, fall back to same-origin Next.js rewrite
+    if (typeof window !== 'undefined' && fullUrl.startsWith('http') && url.startsWith('/')) {
+      try {
+        resp = await fetch(url, { ...options, headers });
+      } catch {
+        return {
+          success: false,
+          message: `Network error: ${err instanceof Error ? err.message : String(err)}`,
+          code: 'NETWORK',
+        };
+      }
+    } else {
+      return {
+        success: false,
+        message: `Network error: ${err instanceof Error ? err.message : String(err)}`,
+        code: 'NETWORK',
+      };
+    }
   }
 
   const data = await parseJSON(resp);

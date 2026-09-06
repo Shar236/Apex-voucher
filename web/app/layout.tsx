@@ -55,12 +55,13 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
     <html
       lang="en"
       className={`${dmSans.variable} ${sora.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="antialiased min-h-screen flex flex-col">
+      <body className="antialiased min-h-screen flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
           <AuthProvider>
             <CartProvider>

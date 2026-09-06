@@ -35,18 +35,37 @@ const app = express();
 
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
+const defaultAllowedOrigins = [
+  config.clientUrl,
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  ...(process.env.CORS_EXTRA_ORIGINS || '').split(','),
+];
 const allowedOrigins = new Set(
-  [config.clientUrl, ...(process.env.CORS_EXTRA_ORIGINS || '').split(',')]
+  defaultAllowedOrigins
     .map((o) => o && o.trim().replace(/\/$/, ''))
     .filter(Boolean)
 );
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  const o = origin.replace(/\/$/, '');
+  if (allowedOrigins.has(o)) return true;
+  // Localhost, 127.0.0.1, IPv6 loopback
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(o)) return true;
+  // Any private LAN IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+  if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(o)) return true;
+  // In development, allow any local network origin
+  if (!config.isProduction) return true;
+  return false;
+};
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Non-browser clients (curl, server-to-server, health checks) send no Origin.
-      if (!origin) return callback(null, true);
-      const o = origin.replace(/\/$/, '');
-      if (allowedOrigins.has(o) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) {
+      if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
       console.warn(`[cors] blocked origin: ${origin}`);
