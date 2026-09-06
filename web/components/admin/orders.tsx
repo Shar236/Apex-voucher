@@ -160,7 +160,7 @@ function OrderDetailPanel({ order }: { order: AdminOrder }) {
   );
 }
 
-export function OrdersAdmin() {
+export function OrdersAdmin({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
   const [rows, setRows] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, Crown, Film, Megaphone, PencilRuler, History,
+  ArrowLeft, LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, Crown, Film, Megaphone, PencilRuler, History,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { ApexLogo } from '@/components/apex-logo';
@@ -129,6 +129,9 @@ export function AdminConsole() {
               salesCount={salesCount}
               onOpenNav={() => setNavOpen(true)}
               onOpenNotifications={() => { setNotificationsOpen(true); loadNotifications(); }}
+              onSelectTab={setTab}
+              user={user}
+              onLogout={logout}
             />
 
             <NotificationsDrawer
@@ -142,7 +145,7 @@ export function AdminConsole() {
             />
 
             {tab === 'dashboard' && <Dashboard onNavigate={setTab} />}
-            {tab === 'products' && <ProductsAdmin onNavigate={setTab} />}
+            {tab === 'products' && <ProductsAdmin />}
             {tab === 'vouchers' && <VouchersAdmin />}
             {tab === 'orders' && <OrdersAdmin />}
             {tab === 'voucher-requests' && <VoucherRequestsAdmin />}

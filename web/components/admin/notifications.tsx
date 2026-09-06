@@ -137,7 +137,7 @@ export function NotificationsDrawer({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-[#141414] w-full max-w-md h-full shadow-2xl border-l border-neutral-200 dark:border-[#262626] flex flex-col">
+      <div className="bg-white dark:bg-[#141414] w-full max-w-md h-full shadow-2xl border-l border-neutral-200 dark:border-[#262626] flex flex-col animate-in slide-in-from-right duration-200">
         <div className="p-5 border-b border-neutral-200 dark:border-[#262626] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-brand-pink/10 text-brand-pink flex items-center justify-center font-black">

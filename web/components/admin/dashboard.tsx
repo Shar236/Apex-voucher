@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Sparkles, Clock, ShoppingCart, Package, Users, Ticket, Tag, AlertTriangle, RefreshCw,
   CalendarCheck, FileSpreadsheet, Download, ShieldAlert, PencilRuler,
@@ -29,45 +29,92 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [period, setPeriod] = useState('30d');
+  const [period, setPeriod] = useState('today');
   const [unmaskedExport, setUnmaskedExport] = useState(false);
-  // Bumping this re-runs the load — the Refresh / Retry buttons use it.
   const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const res = await adminApi.dashboard({ period });
-      if (!alive) return;
+  const fetchDashboard = useCallback(async (selectedPeriod: string) => {
+    setLoading(true);
+    try {
+      const res = await adminApi.dashboard({ period: selectedPeriod });
       if (!res.success) {
-        // A dead backend must not look like an empty store — every KPI would
-        // honestly render ₹0/0 without this.
         setLoadError(res.message || 'Could not load dashboard data.');
         setData(null);
       } else {
         setLoadError('');
         setData((res.data as DashboardData) || null);
       }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load dashboard data.');
+      setData(null);
+    } finally {
       setLoading(false);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [period, reloadKey]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboard(period);
+  }, [period, reloadKey, fetchDashboard]);
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const res = await adminApi.dashboard({ period });
+      if (res.success) {
+        setData((res.data as DashboardData) || null);
+        setLoadError('');
+        notify.success('Dashboard metrics updated');
+      } else {
+        notify.error(res.message || 'Failed to refresh dashboard');
+      }
+    } catch {
+      notify.error('Failed to refresh dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const kpi = data?.kpi || {};
   const charts = data?.charts || {};
   const tables = data?.tables || {};
   const alerts = data?.alerts || {};
 
+  const periodLabel =
+    period === 'today'
+      ? 'Today'
+      : period === '7d'
+      ? 'Last 7 Days'
+      : period === '90d'
+      ? 'Last 90 Days'
+      : 'Last 30 Days';
+
   const stats = [
-    { label: 'Total Net Revenue', value: formatPrice((kpi.netRevenue as number) || 0), icon: <Sparkles className="w-5 h-5" />, tint: '#FF005C', sub: 'Excludes refunded/cancelled' },
+    {
+      label: `Net Revenue (${periodLabel})`,
+      value: formatPrice((kpi.netRevenue as number) || 0),
+      icon: <Sparkles className="w-5 h-5" />,
+      tint: '#FF005C',
+      sub: kpi.lifetimeRevenue ? `All-time: ${formatPrice(kpi.lifetimeRevenue as number)}` : 'Excludes refunded/cancelled',
+    },
     { label: "Today's Revenue", value: formatPrice((kpi.todayRevenue as number) || 0), icon: <Sparkles className="w-5 h-5" />, tint: '#10B981', growth: (kpi.revenueGrowth as number) ?? null },
     { label: "Yesterday's Revenue", value: formatPrice((kpi.yesterdayRevenue as number) || 0), icon: <Clock className="w-5 h-5" />, tint: '#8B5CF6' },
-    // A card is only clickable when it actually has a destination in the console.
-    { label: 'Total Orders', value: kpi.totalOrders || 0, icon: <ShoppingCart className="w-5 h-5" />, tint: '#EC4899', onClick: () => onNavigate('orders') },
+    {
+      label: `Orders (${periodLabel})`,
+      value: kpi.totalOrders ?? 0,
+      icon: <ShoppingCart className="w-5 h-5" />,
+      tint: '#EC4899',
+      sub: kpi.lifetimeOrders ? `All-time: ${kpi.lifetimeOrders}` : undefined,
+      onClick: () => onNavigate('orders'),
+    },
     { label: "Today's Orders", value: kpi.todayOrders || 0, icon: <ShoppingCart className="w-5 h-5" />, tint: '#0EA5E9', growth: (kpi.ordersGrowth as number) ?? null, onClick: () => onNavigate('orders') },
-    { label: 'Total Products Sold', value: kpi.totalProductsSold || 0, icon: <Package className="w-5 h-5" />, tint: '#6C3CE0', onClick: () => onNavigate('products') },
+    {
+      label: `Products Sold (${periodLabel})`,
+      value: kpi.totalProductsSold ?? 0,
+      icon: <Package className="w-5 h-5" />,
+      tint: '#6C3CE0',
+      sub: kpi.lifetimeProductsSold ? `All-time: ${kpi.lifetimeProductsSold}` : undefined,
+      onClick: () => onNavigate('products'),
+    },
     { label: 'Total Customers', value: kpi.totalCustomers || 0, icon: <Users className="w-5 h-5" />, tint: '#14B8A6', onClick: () => onNavigate('users') },
     { label: 'Available Vouchers', value: kpi.availableVouchers || 0, icon: <Ticket className="w-5 h-5" />, tint: '#F59E0B', onClick: () => onNavigate('vouchers') },
     { label: 'Active Promotions', value: kpi.activePromotions || 0, icon: <Tag className="w-5 h-5" />, tint: '#3B82F6', onClick: () => onNavigate('promotions') },
@@ -100,15 +147,21 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm focus:outline-none focus:border-brand-pink"
+            disabled={loading}
+            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm focus:outline-none focus:border-brand-pink cursor-pointer disabled:opacity-60"
           >
             <option value="today">Today</option>
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
             <option value="90d">Last 90 Days</option>
           </select>
-          <button onClick={() => setReloadKey((k) => k + 1)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] font-black text-xs shadow-sm hover:border-brand-pink transition cursor-pointer disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-brand-pink' : ''}`} />
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>

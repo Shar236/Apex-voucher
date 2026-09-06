@@ -1,4 +1,7 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import { useState, type ReactNode } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { ApexLogo } from '@/components/apex-logo';
 
 export function PageShell({ title, subtitle, children, badge = null }: { title: string; subtitle: string; children: ReactNode; badge?: ReactNode }) {
@@ -38,6 +41,10 @@ export function LabeledInput({
   placeholder?: string;
   required?: boolean;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === 'password';
+  const effectiveType = isPassword ? (showPassword ? 'text' : 'password') : type;
+
   return (
     <label className="block">
       <span className="text-xs font-medium uppercase tracking-wider text-ink-muted mb-2 block">{label}</span>
@@ -45,12 +52,24 @@ export function LabeledInput({
         <div className="absolute inset-y-0 left-3.5 flex items-center text-neutral-400">{icon}</div>
         <input
           required={required}
-          type={type}
+          type={effectiveType}
           value={value}
           placeholder={placeholder}
           onChange={onChange}
-          className="w-full pl-11 pr-4 py-3.5 bg-surface-raised border border-line rounded-2xl text-ink text-sm font-normal placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
+          className={`w-full pl-11 ${isPassword ? 'pr-11' : 'pr-4'} py-3.5 bg-surface-raised border border-line rounded-2xl text-ink text-sm font-normal placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition`}
         />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-3.5 flex items-center text-neutral-400 hover:text-ink transition-colors cursor-pointer"
+            title={showPassword ? 'Hide password' : 'Show password'}
+            tabIndex={-1}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        )}
       </div>
     </label>
   );

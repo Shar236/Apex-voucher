@@ -331,8 +331,9 @@ export const dashboardOverview = async (req, res, next) => {
     if (period === '90d') daysCount = 90;
     if (period === 'today') daysCount = 1;
 
-    const rangeStart = new Date();
-    rangeStart.setDate(rangeStart.getDate() - daysCount);
+    const rangeStart = period === 'today'
+      ? todayStart
+      : new Date(now.getTime() - daysCount * 24 * 60 * 60 * 1000);
 
     const [
       totalUsers,
@@ -365,18 +366,37 @@ export const dashboardOverview = async (req, res, next) => {
     ]);
 
     // Explicit Net Revenue: SUM(Paid/Fulfilled Total) - SUM(Refunded Orders)
-    const paidAggregation = await Order.aggregate([
-      { $match: { orderStatus: { $in: PAID_ORDER_STATUSES } } },
-      { $group: { _id: null, sum: { $sum: '$total' } } },
+    const [paidAggregation, refundAggregation, periodPaidAgg, periodRefundAgg] = await Promise.all([
+      Order.aggregate([
+        { $match: { orderStatus: { $in: PAID_ORDER_STATUSES } } },
+        { $group: { _id: null, sum: { $sum: '$total' } } },
+      ]),
+      Order.aggregate([
+        { $match: { orderStatus: 'REFUNDED' } },
+        { $group: { _id: null, sum: { $sum: '$total' } } },
+      ]),
+      Order.aggregate([
+        { $match: { orderStatus: { $in: PAID_ORDER_STATUSES }, createdAt: { $gte: rangeStart } } },
+        { $group: { _id: null, sum: { $sum: '$total' }, count: { $sum: 1 } } },
+      ]),
+      Order.aggregate([
+        { $match: { orderStatus: 'REFUNDED', createdAt: { $gte: rangeStart } } },
+        { $group: { _id: null, sum: { $sum: '$total' } } },
+      ]),
     ]);
-    const grossRevenue = paidAggregation[0]?.sum || 0;
 
-    const refundAggregation = await Order.aggregate([
-      { $match: { orderStatus: 'REFUNDED' } },
-      { $group: { _id: null, sum: { $sum: '$total' } } },
-    ]);
+    const grossRevenue = paidAggregation[0]?.sum || 0;
     const refundedAmount = refundAggregation[0]?.sum || 0;
-    const netRevenue = Math.max(0, grossRevenue - refundedAmount);
+    const lifetimeRevenue = Math.max(0, grossRevenue - refundedAmount);
+    const lifetimeNetRevenue = lifetimeRevenue;
+
+    const periodGross = periodPaidAgg[0]?.sum || 0;
+    const periodOrdersCount = periodPaidAgg[0]?.count || 0;
+    const periodRefunded = periodRefundAgg[0]?.sum || 0;
+    const periodNetRevenue = Math.max(0, periodGross - periodRefunded);
+
+    // If period is all time, use lifetime; otherwise use period-specific
+    const netRevenue = periodNetRevenue;
 
     // Today's Net Revenue vs Yesterday's Net Revenue
     const todayAgg = await Order.aggregate([
@@ -417,13 +437,22 @@ export const dashboardOverview = async (req, res, next) => {
         ? 100
         : 0;
 
-    // Total products sold
-    const unitsSoldAgg = await Order.aggregate([
-      { $match: { orderStatus: { $in: PAID_ORDER_STATUSES } } },
-      { $unwind: '$items' },
-      { $group: { _id: null, totalUnits: { $sum: '$items.quantity' } } },
+    // Total products sold (period vs lifetime)
+    const [unitsSoldAgg, periodUnitsAgg] = await Promise.all([
+      Order.aggregate([
+        { $match: { orderStatus: { $in: PAID_ORDER_STATUSES } } },
+        { $unwind: '$items' },
+        { $group: { _id: null, totalUnits: { $sum: '$items.quantity' } } },
+      ]),
+      Order.aggregate([
+        { $match: { orderStatus: { $in: PAID_ORDER_STATUSES }, createdAt: { $gte: rangeStart } } },
+        { $unwind: '$items' },
+        { $group: { _id: null, totalUnits: { $sum: '$items.quantity' } } },
+      ]),
     ]);
-    const totalProductsSold = unitsSoldAgg[0]?.totalUnits || 0;
+    const lifetimeProductsSold = unitsSoldAgg[0]?.totalUnits || 0;
+    const periodProductsSold = periodUnitsAgg[0]?.totalUnits || 0;
+    const totalProductsSold = periodProductsSold;
 
     // Best-Selling Products Table
     const bestSellers = await Order.aggregate([
@@ -574,16 +603,19 @@ export const dashboardOverview = async (req, res, next) => {
       data: {
         kpi: {
           netRevenue,
+          lifetimeRevenue,
           grossRevenue,
           refundedAmount,
           todayRevenue,
           yesterdayRevenue,
           revenueGrowth,
-          totalOrders: totalOrdersCount,
+          totalOrders: periodOrdersCount,
+          lifetimeOrders: totalOrdersCount,
           todayOrders,
           yesterdayOrders,
           ordersGrowth,
           totalProductsSold,
+          lifetimeProductsSold,
           totalCustomers: totalUsers,
           availableVouchers,
           activePromotions: activePromosCount,
@@ -712,11 +744,19 @@ export const listAdminProducts = async (req, res, next) => {
   try {
     const { search, status, category, provider, sort, page = 1, limit = 50 } = req.query;
     const filter = {};
-    if (status === 'active') filter.active = true;
-    if (status === 'inactive') filter.active = false;
-    if (status === 'featured') filter.featured = true;
-    if (status === 'archived') filter.archived = true;
-    if (status !== 'archived') filter.archived = { $ne: true };
+    if (status === 'active') {
+      filter.active = true;
+      filter.archived = { $ne: true };
+    } else if (status === 'inactive') {
+      filter.active = false;
+    } else if (status === 'featured') {
+      filter.featured = true;
+      filter.archived = { $ne: true };
+    } else if (status === 'archived') {
+      filter.archived = true;
+    } else {
+      filter.archived = { $ne: true };
+    }
     if (category) filter.category = category;
     if (provider) filter.provider = provider;
 
