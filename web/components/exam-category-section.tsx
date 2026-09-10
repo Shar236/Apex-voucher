@@ -26,11 +26,21 @@ export function ExamCategorySection({ products }: { products: Product[] }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch">
           {CATEGORIES.map((cat) => {
-            const matched = products.find((p) => {
-              const key = cat.searchKey;
-              return (p.name || '').toLowerCase().includes(key) || (p.brand || '').toLowerCase().includes(key) || (p.slug || '').toLowerCase().includes(key);
+            const matchingProducts = products.filter((p) => {
+              const key = cat.searchKey.toLowerCase();
+              const haystack = `${p.name || ''} ${p.brand || ''} ${p.provider || ''} ${p.slug || ''}`.toLowerCase();
+              return haystack.includes(key);
             });
-            const target = matched || products[0];
+
+            // Prioritize genuine Exam Vouchers so practice tests or mock AI tools are not chosen as the main voucher
+            const examVouchers = matchingProducts.filter((p) => {
+              const catLower = (p.category || '').toLowerCase();
+              return catLower.includes('voucher') || catLower === 'exam voucher';
+            });
+
+            const pool = examVouchers.length > 0 ? examVouchers : matchingProducts;
+            const sortedCandidates = [...pool].sort((a, b) => (a.sellingPrice || 0) - (b.sellingPrice || 0));
+            const target = sortedCandidates[0] || products[0];
             const priced = target ? unitDisplayPrice(target, undefined, currency) : { current: 15499, original: 18900, currency };
             const price = priced.current;
             const savings = Math.max(0, priced.original - priced.current);

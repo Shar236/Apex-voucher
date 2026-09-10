@@ -298,6 +298,21 @@ export const adminApi = {
   restoreProduct: (id: string) => request(`/api/admin/products/${id}/restore`, { method: 'PATCH' }),
   reorderProducts: (items: unknown) =>
     request('/api/admin/products/reorder', { method: 'PATCH', body: JSON.stringify({ items }) }),
+  revalidatePublicProducts: async (slugs: string[] = []) => {
+    const token = getToken();
+    try {
+      await fetch('/api/revalidate/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ slugs }),
+      });
+    } catch {
+      /* non-fatal — Next.js ISR window refreshes public pages */
+    }
+  },
   getProductInventory: (id: string) => request(`/api/admin/products/${id}/inventory`),
   uploadProductLogo: async (file: File): Promise<ApiResponse> => {
     const formData = new FormData();

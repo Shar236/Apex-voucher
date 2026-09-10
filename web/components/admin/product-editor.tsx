@@ -566,6 +566,8 @@ export function ProductEditor({
       flash('err', `Saved, but check: ${warnings.join(' ')}`);
       if (!isNew) return; // stay so the admin can fix; for new, fall through to close
     }
+    const slug = draft.slug || (res.data as { slug?: string })?.slug;
+    adminApi.revalidatePublicProducts(slug ? [slug] : []);
     onSaved();
   };
 

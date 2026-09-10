@@ -12,6 +12,8 @@ export interface ProductDetailResponse {
   };
 }
 
+const isDev = process.env.NODE_ENV === 'development';
+
 /** backend/controllers/productController.js getProduct — product + related + Product/BreadcrumbList JSON-LD, all server-computed. */
 export async function getProductBySlug(slug: string): Promise<ProductDetailResponse | null> {
   try {
@@ -19,7 +21,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
     const qs = currency ? `?currency=${encodeURIComponent(currency)}` : '';
     const res = await fetch(`${apiBase()}/api/products/${encodeURIComponent(slug)}${qs}`, {
       ...(currency ? { headers: currencyDisplayHeaders(currency) } : {}),
-      next: { revalidate: 300 },
+      next: { revalidate: isDev ? 0 : 300, tags: ['products', `product-${slug}`] },
       signal: AbortSignal.timeout(3500),
     });
     if (!res.ok) return null;
@@ -37,7 +39,7 @@ export async function listProducts(): Promise<Product[]> {
     const qs = currency ? `?currency=${encodeURIComponent(currency)}` : '';
     const res = await fetch(`${apiBase()}/api/products${qs}`, {
       ...(currency ? { headers: currencyDisplayHeaders(currency) } : {}),
-      next: { revalidate: 300 },
+      next: { revalidate: isDev ? 0 : 300, tags: ['products'] },
       signal: AbortSignal.timeout(3500),
     });
     if (!res.ok) return [];

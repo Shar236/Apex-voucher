@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { siteConfig } from '@/lib/config';
 
 /**
@@ -38,6 +38,17 @@ export async function POST(req: Request) {
     /* no body — revalidate the storefront pages only */
   }
 
+  try {
+    revalidateTag('products', { expire: 0 });
+    revalidateTag('website-config', { expire: 0 });
+    for (const slug of slugs) {
+      revalidateTag(`product-${slug}`, { expire: 0 });
+    }
+  } catch {
+    /* non-fatal */
+  }
+
+  revalidatePath('/', 'layout');
   revalidatePath('/');
   revalidatePath('/exam-booking');
   revalidatePath('/exam-vouchers');

@@ -2286,13 +2286,27 @@ export const seedAdmin = async () => {
     // Ignore error if schema validation issue on old docs
   }
 
-  let admin = await User.findOne({ email: config.admin.email.toLowerCase() }).select('+passwordHash');
+  const targetEmail = (config.admin.email || 'info@apexvouchers.com').toLowerCase().trim();
+
+  let admin = await User.findOne({ email: targetEmail }).select('+passwordHash');
   if (!admin) {
     admin = await User.findOne({ role: 'admin' }).select('+passwordHash');
   }
 
   if (admin) {
     let changed = false;
+    if (admin.email !== targetEmail) {
+      const conflict = await User.findOne({ email: targetEmail });
+      if (!conflict) {
+        console.log(`[seed] updating admin email from ${admin.email} to ${targetEmail}`);
+        admin.email = targetEmail;
+        changed = true;
+      }
+    }
+    if (config.admin.name && admin.name !== config.admin.name) {
+      admin.name = config.admin.name;
+      changed = true;
+    }
     if (admin.role !== 'admin') {
       admin.role = 'admin';
       changed = true;

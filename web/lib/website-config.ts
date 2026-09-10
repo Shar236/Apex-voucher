@@ -61,6 +61,8 @@ const FALLBACK: WebsiteConfig = {
  * identical fetches within a single render pass, so this only hits the API once
  * per request despite being called from two places.
  */
+const isDev = process.env.NODE_ENV === 'development';
+
 export async function getWebsiteConfig(): Promise<WebsiteConfig> {
   try {
     // Forward the session display currency (short-lived cookie) so the backend
@@ -70,7 +72,7 @@ export async function getWebsiteConfig(): Promise<WebsiteConfig> {
     const qs = currency ? `?currency=${encodeURIComponent(currency)}` : '';
     const res = await fetch(`${apiBase()}/api/products/website-config${qs}`, {
       ...(currency ? { headers: currencyDisplayHeaders(currency) } : {}),
-      next: { revalidate: 300 },
+      next: { revalidate: isDev ? 0 : 300, tags: ['website-config', 'products'] },
       signal: AbortSignal.timeout(3500),
     });
     if (!res.ok) return FALLBACK;

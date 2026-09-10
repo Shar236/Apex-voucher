@@ -84,23 +84,31 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
     const res = await adminApi.quickUpdatePrice(id, quickPrices);
     if (res.success) {
       setQuickPriceId(null);
+      adminApi.revalidatePublicProducts();
       refresh();
     } else notify.error((res.message as string) || 'Failed to update price');
   };
 
   const toggleStatus = async (p: AdminProduct) => {
     const res = await adminApi.quickUpdateStatus(p._id, !p.active);
-    if (res.success) refresh();
+    if (res.success) {
+      adminApi.revalidatePublicProducts(p.slug ? [p.slug] : []);
+      refresh();
+    }
   };
   const toggleFeatured = async (p: AdminProduct) => {
     const res = await adminApi.quickUpdateFeatured(p._id, !p.featured);
-    if (res.success) refresh();
+    if (res.success) {
+      adminApi.revalidatePublicProducts(p.slug ? [p.slug] : []);
+      refresh();
+    }
   };
   const removeProduct = async (p: AdminProduct) => {
     if (!(await confirm({ title: `Are you sure you want to deactivate or remove ${p.name}?` }))) return;
     const res = await adminApi.deleteProduct(p._id);
     if (res.success) {
       if (res.deactivated) notify.success('Product archived. Historical records preserved.');
+      adminApi.revalidatePublicProducts(p.slug ? [p.slug] : []);
       refresh();
     } else notify.error((res.message as string) || 'Action failed');
   };
@@ -108,19 +116,24 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
     const res = await adminApi.duplicateProduct(p._id);
     if (res.success) {
       notify.success(`Duplicated as "${(res.data as { name?: string })?.name}" (inactive, review before publishing).`);
+      adminApi.revalidatePublicProducts();
       refresh();
     } else notify.error((res.message as string) || 'Failed to duplicate product');
   };
   const archiveProduct = async (p: AdminProduct) => {
     if (!(await confirm({ title: `Archive ${p.name}? It will be hidden from the public site but kept in Admin.` }))) return;
     const res = await adminApi.archiveProduct(p._id);
-    if (res.success) refresh();
-    else notify.error((res.message as string) || 'Failed to archive product');
+    if (res.success) {
+      adminApi.revalidatePublicProducts(p.slug ? [p.slug] : []);
+      refresh();
+    } else notify.error((res.message as string) || 'Failed to archive product');
   };
   const restoreProduct = async (p: AdminProduct) => {
     const res = await adminApi.restoreProduct(p._id);
-    if (res.success) refresh();
-    else notify.error((res.message as string) || 'Failed to restore product');
+    if (res.success) {
+      adminApi.revalidatePublicProducts(p.slug ? [p.slug] : []);
+      refresh();
+    } else notify.error((res.message as string) || 'Failed to restore product');
   };
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -133,8 +146,10 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
     reordered.splice(toIndex, 0, moved);
     const items = reordered.map((r, i) => ({ id: r._id, order: i + 1 }));
     const res = await adminApi.reorderProducts(items);
-    if (res.success) refresh();
-    else notify.error((res.message as string) || 'Failed to reorder products');
+    if (res.success) {
+      adminApi.revalidatePublicProducts();
+      refresh();
+    } else notify.error((res.message as string) || 'Failed to reorder products');
   };
   const moveProduct = (index: number, direction: number) => reorderTo(index, index + direction);
 
