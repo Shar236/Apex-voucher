@@ -35,15 +35,17 @@ export const config = {
 
   business: {
     name: process.env.BUSINESS_NAME || 'Apex Vouchers',
-    email: process.env.BUSINESS_EMAIL || 'apexvouchers@gmail.com',
-    supportEmail: process.env.SUPPORT_EMAIL || 'apexvouchers@gmail.com',
+    email: process.env.BUSINESS_EMAIL || 'info@apexvouchers.com',
+    supportEmail: process.env.SUPPORT_EMAIL || 'info@apexvouchers.com',
     supportPhone: process.env.SUPPORT_PHONE || '+91 9855926113',
-    adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'apexvouchers@gmail.com',
+    whatsappPhone: process.env.WHATSAPP_PHONE || '+91 9855926113',
+    adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'info@apexvouchers.com',
     website: process.env.BUSINESS_WEBSITE || 'https://apexvouchers.com',
+    logoUrl: process.env.BRAND_LOGO_URL || 'https://res.cloudinary.com/nbcbpuql/image/upload/apex_branding/apex_vouchers_logo.png',
   },
 
   admin: {
-    email: process.env.ADMIN_EMAIL || 'apexvouchers@gmail.com',
+    email: process.env.ADMIN_EMAIL || 'info@apexvouchers.com',
     password: process.env.ADMIN_PASSWORD || 'Admin@123',
     name: process.env.ADMIN_NAME || 'System Admin',
   },
@@ -86,5 +88,38 @@ export const config = {
 
   // Canonical/absolute base URL for SEO (sitemap, canonical tags, structured data).
   siteUrl: process.env.SEO_SITE_URL || '',
+
+  // ── Multi-currency (geo + live FX) ────────────────────────────────────────
+  // INR is the source of truth; USD is derived from the live USD/INR rate for
+  // customers detected OUTSIDE India. See services/geo.js and services/fx.js.
+  geo: {
+    // Safe fallback when no platform geo header is present AND the optional
+    // IP-geolocation service cannot classify the visitor. Default: the home
+    // market (India) — an undetectable visitor is billed in INR.
+    fallbackCountry: (process.env.GEO_FALLBACK_COUNTRY || 'IN').toUpperCase(),
+    // Optional IP→country service, e.g. "https://ipapi.co/{ip}/country/".
+    // Setting the env var to an EMPTY string DISABLES IP lookups (headers +
+    // fallback only). "{ip}" is replaced with the visitor IP. Lookups are
+    // cached 24h per IP, 3s timeout.
+    ipApiUrl: process.env.GEO_IP_API_URL !== undefined && process.env.GEO_IP_API_URL !== null
+      ? process.env.GEO_IP_API_URL
+      : 'https://ipapi.co/{ip}/country/',
+  },
+
+  fx: {
+    // USD→INR provider. Default is the free Open Exchange Rates-compatible
+    // endpoint (no key required) — do NOT set FX_API_KEY unless your provider
+    // actually needs one.
+    apiUrl: process.env.FX_API_URL || 'https://open.er-api.com/v6/latest/USD',
+    apiKey: process.env.FX_API_KEY || '',
+    // Cached-rate lifetime. One cached value serves unlimited requests.
+    cacheTtlSeconds: Number(process.env.FX_RATE_CACHE_TTL || 900), // 15 min
+    // A stale cached rate may still be used for at most this long when the
+    // provider is unreachable. Beyond it, USD checkout refuses (INR works).
+    maxAgeSeconds: Number(process.env.FX_RATE_MAX_AGE_SECONDS || 21600), // 6h
+    // EXPLICIT international pricing buffer (0–X%). Default 0 — never a
+    // hidden markup. Applied only to international (USD) conversions.
+    internationalMarkupPercent: Math.max(0, Number(process.env.INTERNATIONAL_FX_MARKUP_PERCENT || 0)),
+  },
 };
 

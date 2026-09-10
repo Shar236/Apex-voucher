@@ -11,7 +11,7 @@ const REDEMPTION_STEPS = [
 ];
 
 const SECURITY_ITEMS = [
-  { icon: Lock, title: '256-Bit SSL Lock', desc: 'Encrypted checkout protocols' },
+  { icon: Lock, title: 'Safe & Secure Checkout', desc: 'Your payment is protected end to end' },
   { icon: ShieldCheck, title: 'Direct Partner Code', desc: 'Direct official reseller issuing' },
   { icon: CreditCard, title: 'All Payment Options', desc: 'UPI, Credit/Debit & EMI' },
   { icon: Mail, title: 'Instant Invoice', desc: 'GST invoice + email delivery' },

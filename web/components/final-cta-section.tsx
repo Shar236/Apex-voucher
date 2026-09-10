@@ -39,7 +39,7 @@ export function FinalCTASection() {
             <div className="flex flex-wrap items-center gap-6 text-xs font-normal text-neutral-400 pt-4">
               <span>⚡ 10-Second Instant Delivery</span>
               <span>•</span>
-              <span>🔒 256-bit Encrypted Checkout</span>
+              <span>🔒 Safe &amp; Secure Checkout</span>
               <span>•</span>
               <span>💬 24/7 Support Available</span>
             </div>
@@ -53,7 +53,7 @@ export function FinalCTASection() {
                 </div>
               </div>
               <div className="space-y-1">
-                <span className="font-heading font-medium text-xl text-white block">Official Bulk Discount Passes</span>
+                <span className="font-heading font-medium text-xl text-white block">Official Bulk Discount Offers</span>
                 <span className="text-xs text-neutral-400 font-normal block">PTE • GRE • TOEFL • Duolingo • IELTS</span>
               </div>
             </div>

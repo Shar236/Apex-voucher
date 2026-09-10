@@ -20,6 +20,9 @@ import { markVoucherRequestFulfilled } from '../services/voucherRequestService.j
 import { createFulfillmentRequestForOrder } from '../services/fulfillmentService.js';
 import { config } from '../config/index.js';
 import { isValidObjectId } from '../config/db.js';
+import { getCustomerCountry, getDisplayCurrency, isIndia } from '../services/geo.js';
+import { getFxRate, convertInrToUsd } from '../services/fx.js';
+import { convertOrderTotals, calculateRazorpayAmount, moneyLabel } from '../services/pricing.js';
 import {
   isRazorpayConfigured,
   createRazorpayOrder,
@@ -106,6 +109,7 @@ const getProductsWithPrices = async (lineItems) => {
     items.push({
       productId: product._id,
       productName: product.name,
+      slug: product.slug || '',
       voucherType,
       brand: product.brand || '',
       unitPrice,
@@ -236,6 +240,7 @@ const enrichVouchers = (order, vouchers) =>
       expiryDate: v.expiryDate,
       productName: match?.productName || v.productId?.name || '',
       voucherType: v.voucherType || match?.voucherType || '',
+      slug: v.productId?.slug || match?.slug || '',
       redemptionSteps: Array.isArray(v.productId?.redemptionSteps) ? v.productId.redemptionSteps : [],
       officialWebsiteUrl: v.productId?.officialWebsiteUrl || '',
     };
@@ -243,7 +248,7 @@ const enrichVouchers = (order, vouchers) =>
 
 const publicVoucherList = async (order) => {
   const vouchers = await VoucherCode.find({ orderId: order._id, userId: order.userId })
-    .populate('productId', 'name brand provider redemptionSteps officialWebsiteUrl validityMonths')
+    .populate('productId', 'name brand provider slug redemptionSteps officialWebsiteUrl validityMonths')
     .lean();
   return enrichVouchers(order, vouchers);
 };
@@ -578,13 +583,23 @@ export const reconcileOrderPayment = async ({ order, user, source = 'reconcile',
  * PUBLIC — checkout key id only. The secret is never exposed.
  * GET /api/payments/config
  * ══════════════════════════════════════════════════════════════════════════ */
-export const getPublicPaymentConfig = (_req, res) => {
+export const getPublicPaymentConfig = async (req, res) => {
+  // Server-side country detection drives the display/billing currency. The
+  // browser cannot choose it — this endpoint is the frontend's only source.
+  let currency = 'INR';
+  let country = config.geo.fallbackCountry;
+  try {
+    country = await getCustomerCountry(req);
+    currency = getDisplayCurrency(country);
+  } catch {}
   res.json({
     success: true,
     provider: 'razorpay',
     configured: isRazorpayConfigured(),
     keyId: config.razorpay.keyId || null, // publishable key — safe for the browser
-    currency: 'INR',
+    country, // server-detected ISO-2 (authoritative detection)
+    currency, // display/billing currency for this visitor
+    internationalPaymentsEnabled: isRazorpayConfigured(), // USD orders also require Razorpay Dashboard → International enabled
     env: config.razorpay.env, // 'live' | 'test' | 'unknown' — derived from the key id
     live: config.razorpay.isLive,
   });
@@ -653,16 +668,46 @@ export const createPaymentOrder = async (req, res, next) => {
       return next(new AppError('Order total must be greater than zero', 400, 'ZERO_TOTAL_ORDER'));
     }
 
+    /* ── Multi-currency pricing (SERVER-AUTHORITATIVE) ──────────────────────
+     * The customer's country is re-detected here from their IP / platform geo
+     * headers — NEVER from the request body. India → charge INR (unchanged
+     * behaviour, UPI intact). Outside India → convert the canonical INR total
+     * to USD using the live, cached FX rate. Any amount/currency/country the
+     * browser sent is ignored for pricing. If no trustworthy FX rate is
+     * available, international checkout is refused (INR checkout unaffected).
+     * ──────────────────────────────────────────────────────────────────────── */
+    let country = config.geo.fallbackCountry;
+    try {
+      country = await getCustomerCountry(req);
+    } catch {}
+    const currency = getDisplayCurrency(country);
+
+    const baseTotalsInr = { subtotal, discountAmount, total };
+    const chargeTotals = await convertOrderTotals(baseTotalsInr, currency);
+
+    // UPI is India-only on Razorpay — international customers pay by card.
+    const effectivePaymentMethod = currency === 'USD' ? 'card' : (paymentMethod || 'upi');
+
     // 2. Persist the internal order in PENDING state.
+    // `subtotal` / `discountAmount` / `total` are stored in the CHARGE
+    // currency; the canonical INR base amounts are preserved alongside for
+    // audit (baseAmountINR etc.) and never recalculated after creation.
     const order = new Order({
       orderNo: generateOrderNo(),
       userId: req.user.id,
       items: lineItems,
-      subtotal,
-      discountAmount,
+      subtotal: chargeTotals.subtotal,
+      discountAmount: chargeTotals.discountAmount,
       tax: 0,
-      total,
-      currency: 'INR',
+      total: chargeTotals.total,
+      currency: chargeTotals.currency,
+      baseSubtotalINR: chargeTotals.currency === 'USD' ? subtotal : null,
+      baseDiscountINR: chargeTotals.currency === 'USD' ? discountAmount : null,
+      baseAmountINR: chargeTotals.currency === 'USD' ? total : null,
+      fxRateUsed: chargeTotals.fxRateUsed,
+      fxRateTimestamp: chargeTotals.fxRateTimestamp,
+      fxRateSource: chargeTotals.fxRateSource,
+      countryCode: country,
       promotionId: promoResult.promotion?._id || null,
       promoCode: promoResult.promotion?.code || null,
       paymentStatus: 'PENDING',
@@ -671,7 +716,7 @@ export const createPaymentOrder = async (req, res, next) => {
       source: voucherRequest ? 'VOUCHER_REQUEST' : 'STOREFRONT',
       voucherRequestId: voucherRequest?._id || null,
       paymentProvider: 'razorpay',
-      paymentMethod: paymentMethod || 'upi',
+      paymentMethod: effectivePaymentMethod,
       billingDetails: {
         name: billing?.name || req.user.name || '',
         email: billing?.email || req.user.email || '',
@@ -692,12 +737,14 @@ export const createPaymentOrder = async (req, res, next) => {
     // PAID transition inside fulfillVerifiedOrder (consumPromotionForOrder).
     await order.save();
 
-    // 3. Create the Razorpay order for the EXACT server total (in paise).
+    // 3. Create the Razorpay order for the EXACT server total in the charge
+    // currency's smallest subunit (paise for INR, cents for USD). The amount
+    // is recalculated here from the order — never taken from the browser.
     let rzpOrder;
     try {
       rzpOrder = await createRazorpayOrder({
-        amountPaise: Math.round(total * 100),
-        currency: 'INR',
+        amountPaise: calculateRazorpayAmount(order.total, order.currency),
+        currency: order.currency,
         receipt: order.orderNo,
         notes: { internalOrderId: order._id.toString(), userId: req.user.id.toString() },
       });
@@ -725,8 +772,11 @@ export const createPaymentOrder = async (req, res, next) => {
       success: true,
       orderId: order._id,
       orderNo: order.orderNo,
-      amount: rzpOrder.amount, // paise
-      currency: rzpOrder.currency,
+      amount: rzpOrder.amount, // smallest subunit: paise (INR) / cents (USD)
+      currency: rzpOrder.currency, // the currency the customer WILL be charged
+      total: order.total, // charged amount in major units (display truth)
+      baseAmountINR: order.baseAmountINR ?? order.total,
+      priceCurrencyLabel: moneyLabel(order.total, order.currency),
       razorpayOrderId: rzpOrder.id,
       keyId: config.razorpay.keyId, // publishable
       prefill: {

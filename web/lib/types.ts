@@ -87,6 +87,13 @@ export interface DurationOption {
   originalPrice: number;
   validityDays: number;
   enabled?: boolean;
+  // Server-converted display prices (USD for international visitors; equal to
+  // sellingPrice/originalPrice when the display currency is INR).
+  displaySellingPrice?: number;
+  displayOriginalPrice?: number;
+  displayCurrency?: 'INR' | 'USD';
+  inr?: { displaySellingPrice: number; displayOriginalPrice: number };
+  usd?: { displaySellingPrice: number; displayOriginalPrice: number } | null;
 }
 
 /** The hydrated product shape returned by the backend (backend/controllers/productController.js applyAvailability). */
@@ -108,6 +115,18 @@ export interface Product {
   discountedPrice?: number;
   discountPercent?: number;
   savings?: number;
+  // ── Server-computed display pricing (backend/services/pricing.js) ────────
+  // INR is the base price; `pricing.displayPrice` is already converted to the
+  // visitor's display currency. The browser NEVER converts currencies itself.
+  pricing?: {
+    currency: 'INR' | 'USD';
+    displayPrice: number;
+    displayOriginalPrice?: number;
+    basePriceINR: number;
+    countryCode?: string | null;
+    inr?: { displayPrice: number; displayOriginalPrice?: number };
+    usd?: { displayPrice: number; displayOriginalPrice?: number } | null;
+  };
   comingSoon?: boolean;
   stockType?: 'LIMITED' | 'UNLIMITED';
   stockStatus?: string;

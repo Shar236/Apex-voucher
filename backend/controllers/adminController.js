@@ -365,40 +365,54 @@ export const dashboardOverview = async (req, res, next) => {
       }),
     ]);
 
-    // Explicit Net Revenue: SUM(Paid/Fulfilled Total) - SUM(Refunded Orders)
-    const [paidAggregation, refundAggregation, periodPaidAgg, periodRefundAgg] = await Promise.all([
+    // Explicit Net Revenue: SUM(Paid/Fulfilled Total) - SUM(Refunded Orders).
+    // CURRENCY-AWARE: ₹ and $ totals are NEVER summed together. The headline
+    // revenue numbers are INR-only; `revenueByCurrency` carries the split.
+    const [paidByCurrencyAgg, refundByCurrencyAgg, periodPaidByCurrencyAgg, periodRefundByCurrencyAgg] = await Promise.all([
       Order.aggregate([
         { $match: { orderStatus: { $in: PAID_ORDER_STATUSES } } },
-        { $group: { _id: null, sum: { $sum: '$total' } } },
+        { $group: { _id: { $ifNull: ['$currency', 'INR'] }, sum: { $sum: '$total' }, count: { $sum: 1 } } },
       ]),
       Order.aggregate([
         { $match: { orderStatus: 'REFUNDED' } },
-        { $group: { _id: null, sum: { $sum: '$total' } } },
+        { $group: { _id: { $ifNull: ['$currency', 'INR'] }, sum: { $sum: '$total' } } },
       ]),
       Order.aggregate([
         { $match: { orderStatus: { $in: PAID_ORDER_STATUSES }, createdAt: { $gte: rangeStart } } },
-        { $group: { _id: null, sum: { $sum: '$total' }, count: { $sum: 1 } } },
+        { $group: { _id: { $ifNull: ['$currency', 'INR'] }, sum: { $sum: '$total' }, count: { $sum: 1 } } },
       ]),
       Order.aggregate([
         { $match: { orderStatus: 'REFUNDED', createdAt: { $gte: rangeStart } } },
-        { $group: { _id: null, sum: { $sum: '$total' } } },
+        { $group: { _id: { $ifNull: ['$currency', 'INR'] }, sum: { $sum: '$total' } } },
       ]),
     ]);
 
-    const grossRevenue = paidAggregation[0]?.sum || 0;
-    const refundedAmount = refundAggregation[0]?.sum || 0;
+    const sumWhere = (rows, currency) =>
+      rows.filter((r) => String(r._id || 'INR').toUpperCase() === currency)
+        .reduce((s, r) => s + (r.sum || 0), 0);
+    const mapByCurrency = (rows) =>
+      Object.fromEntries(rows.map((r) => [String(r._id || 'INR').toUpperCase(), Math.round((r.sum || 0) * 100) / 100]));
+
+    // INR-only headline revenue (legacy semantics preserved).
+    const grossRevenue = sumWhere(paidByCurrencyAgg, 'INR');
+    const refundedAmount = sumWhere(refundByCurrencyAgg, 'INR');
     const lifetimeRevenue = Math.max(0, grossRevenue - refundedAmount);
     const lifetimeNetRevenue = lifetimeRevenue;
 
-    const periodGross = periodPaidAgg[0]?.sum || 0;
-    const periodOrdersCount = periodPaidAgg[0]?.count || 0;
-    const periodRefunded = periodRefundAgg[0]?.sum || 0;
+    const periodGross = sumWhere(periodPaidByCurrencyAgg, 'INR');
+    const periodOrdersCount = periodPaidByCurrencyAgg.reduce((s, r) => s + (r.count || 0), 0);
+    const periodRefunded = sumWhere(periodRefundByCurrencyAgg, 'INR');
     const periodNetRevenue = Math.max(0, periodGross - periodRefunded);
+
+    // Per-currency splits (lifetime + period) for auditable reporting.
+    const revenueByCurrency = mapByCurrency(paidByCurrencyAgg);
+    const periodRevenueByCurrency = mapByCurrency(periodPaidByCurrencyAgg);
 
     // If period is all time, use lifetime; otherwise use period-specific
     const netRevenue = periodNetRevenue;
 
-    // Today's Net Revenue vs Yesterday's Net Revenue
+    // Today's Net Revenue vs Yesterday's Net Revenue (INR-only; USD orders are
+    // reported separately via revenueByCurrency — never mixed currencies).
     const todayAgg = await Order.aggregate([
       {
         $match: {
@@ -406,10 +420,11 @@ export const dashboardOverview = async (req, res, next) => {
           createdAt: { $gte: todayStart },
         },
       },
-      { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } },
+      { $group: { _id: { $ifNull: ['$currency', 'INR'] }, total: { $sum: '$total' }, count: { $sum: 1 } } },
     ]);
-    const todayRevenue = todayAgg[0]?.total || 0;
-    const todayOrders = todayAgg[0]?.count || 0;
+    const todayRevenue = todayAgg.filter((r) => String(r._id || 'INR') === 'INR').reduce((s, r) => s + (r.total || 0), 0);
+    const todayOrders = todayAgg.reduce((s, r) => s + (r.count || 0), 0);
+    const todayRevenueByCurrency = Object.fromEntries(todayAgg.map((r) => [String(r._id || 'INR'), Math.round((r.total || 0) * 100) / 100]));
 
     const yesterdayAgg = await Order.aggregate([
       {
@@ -418,10 +433,10 @@ export const dashboardOverview = async (req, res, next) => {
           createdAt: { $gte: yesterdayStart, $lt: yesterdayEnd },
         },
       },
-      { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } },
+      { $group: { _id: { $ifNull: ['$currency', 'INR'] }, total: { $sum: '$total' }, count: { $sum: 1 } } },
     ]);
-    const yesterdayRevenue = yesterdayAgg[0]?.total || 0;
-    const yesterdayOrders = yesterdayAgg[0]?.count || 0;
+    const yesterdayRevenue = yesterdayAgg.filter((r) => String(r._id || 'INR') === 'INR').reduce((s, r) => s + (r.total || 0), 0);
+    const yesterdayOrders = yesterdayAgg.reduce((s, r) => s + (r.count || 0), 0);
 
     const revenueGrowth =
       yesterdayRevenue > 0
@@ -608,6 +623,10 @@ export const dashboardOverview = async (req, res, next) => {
           refundedAmount,
           todayRevenue,
           yesterdayRevenue,
+          // Currency-aware reporting split (never mixes ₹ + $ into one total).
+          revenueByCurrency,
+          periodRevenueByCurrency,
+          todayRevenueByCurrency,
           revenueGrowth,
           totalOrders: periodOrdersCount,
           lifetimeOrders: totalOrdersCount,
@@ -2892,6 +2911,7 @@ export const resendOrderEmail = async (req, res, next) => {
         code: v.code,
         expiryDate: v.expiryDate,
         productName: match?.productName || v.productId?.name || 'Exam Voucher',
+        slug: v.productId?.slug || match?.slug || '',
       };
     });
 

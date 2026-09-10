@@ -13,19 +13,24 @@ import { VoucherCard } from '@/components/voucher-card';
 import { StockBadge, PriceDisplay, DiscountBadge, DeliveryValidityBar, SectionHeading } from '@/components/ui';
 import { getRedemptionGuide } from '@/lib/redemption-guides';
 import { formatPrice } from '@/lib/api';
+import { useCurrency } from '@/lib/currency';
 import type { Product, DurationOption } from '@/lib/types';
+import { unitDisplayPrice } from '@/lib/pricing';
 
 const DEFAULT_INCLUSIONS = ['Genuine Digital Voucher', 'Fast Delivery to Email', 'Clear Redemption Instructions', 'Official Provider Redemption', 'Customer Support', 'Transparent Pricing'];
 
-export function ProductDetailPage({ product, related, supportPhone = '+91 9855926113', supportEmail = 'apexvouchers@gmail.com' }: { product: Product; related: Product[]; supportPhone?: string; supportEmail?: string }) {
+export function ProductDetailPage({ product, related, supportPhone = '+91 9855926113', supportEmail = 'info@apexvouchers.com' }: { product: Product; related: Product[]; supportPhone?: string; supportEmail?: string }) {
+  const { currency } = useCurrency();
   const enabledDurations = useMemo(
     () => (product.durationOptions || []).filter((o) => o.enabled !== false),
     [product.durationOptions]
   );
   const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(enabledDurations.length > 0 ? enabledDurations[0] : null);
 
-  const currentPrice = selectedDuration?.sellingPrice ?? product.discountedPrice ?? product.sellingPrice ?? 0;
-  const originalPrice = selectedDuration?.originalPrice ?? product.originalPrice ?? 0;
+  const priced = unitDisplayPrice(product, selectedDuration, currency);
+  const currentPrice = priced.current;
+  const originalPrice = priced.original;
+  const priceCurrency = priced.currency;
   const displayValidity = selectedDuration
     ? selectedDuration.validityDays >= 30 && selectedDuration.validityDays % 30 === 0
       ? `Valid ${selectedDuration.validityDays / 30} Month${selectedDuration.validityDays / 30 === 1 ? '' : 's'}`
@@ -113,8 +118,11 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
               )}
 
               <div className="flex items-end gap-4">
-                <PriceDisplay original={originalPrice} current={currentPrice} formatPrice={formatPrice} size="lg" emphasis="accent" showSaved />
-                <DiscountBadge percent={originalPrice > currentPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0} savings={Math.max(0, originalPrice - currentPrice)} formatPrice={formatPrice} />
+                <PriceDisplay original={originalPrice} current={currentPrice} formatPrice={(n) => formatPrice(n, priceCurrency)} size="lg" emphasis="accent" showSaved />
+                <DiscountBadge percent={originalPrice > currentPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0} savings={Math.max(0, originalPrice - currentPrice)} formatPrice={(n) => formatPrice(n, priceCurrency)} />
+                <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider pb-1.5 whitespace-nowrap">
+                  {priceCurrency === 'USD' ? 'USD $' : 'INR ₹'}
+                </span>
               </div>
 
               <DeliveryValidityBar product={displayValidity ? { ...product, validity: displayValidity } : product} className="max-w-xs" />
@@ -168,7 +176,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
         </div>
       </section>
 
-      <section className="py-16 sm:py-20 bg-surface-raised border-y border-line transition-colors duration-300">
+      <section id="how-to-redeem" className="py-16 sm:py-20 bg-surface-raised border-y border-line transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <RedemptionGuideSection product={product} />
         </div>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Apex Vouchers — Transactional Email Design Gallery</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 40px 20px; margin: 0; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; color: #fff; }
+    .pill { display: inline-block; padding: 4px 10px; background: rgba(255, 0, 92, 0.15); border: 1px solid rgba(255, 0, 92, 0.4); border-radius: 999px; color: #ff005c; font-size: 12px; font-weight: 700; margin-left: 10px; }
+    .section-title { font-size: 16px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin: 32px 0 16px 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; text-decoration: none; color: inherit; transition: all 0.2s; display: block; }
+    .card:hover { border-color: #ff005c; transform: translateY(-2px); box-shadow: 0 10px 25px rgba(255, 0, 92, 0.15); }
+    .tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; margin-bottom: 10px; }
+    .tag-customer { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .tag-prep { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .tag-admin { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
+    .tag-auth { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .title { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: #fff; }
+    .desc { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+    .target-url { font-size: 11px; font-family: monospace; color: #ff005c; margin-top: 8px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Apex Vouchers <span class="pill">Transaction Email Redesign with Redemption Guide</span></h1>
+    <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+      Features light commercial design, official hosted logo, brand pink (#FF005C) accents, dynamic product redemption guides with exact product explore URLs, and complete removal of the old Roadmap/Voucher Preparing cards.
+    </p>
+
+    <div class="section-title">Customer Receipts &amp; Vouchers (Delivered &amp; Preparing)</div>
+    <div class="grid">
+      <a class="card" href="./01-ielts-payment-preparing.html" target="_blank">
+        <span class="tag tag-prep">Preparing / Payment Confirmed</span>
+        <div class="title">1. IELTS Payment Preparing</div>
+        <div class="desc">Payment successful. Shows "HOW TO REDEEM YOUR VOUCHER" card pointing to the IELTS explore page while voucher is preparing.</div>
+        <div class="target-url">→ /exam-vouchers/ielts-exam-voucher</div>
+      </a>
+
+      <a class="card" href="./02-ielts-voucher-delivered.html" target="_blank">
+        <span class="tag tag-customer">Instant Delivery</span>
+        <div class="title">2. IELTS Voucher Delivered</div>
+        <div class="desc">Official voucher code allocated. Shows "HOW TO REDEEM YOUR VOUCHER" card and direct "View Redemption Guide →" CTA.</div>
+        <div class="target-url">→ /exam-vouchers/ielts-exam-voucher</div>
+      </a>
+
+      <a class="card" href="./03-pte-payment-preparing.html" target="_blank">
+        <span class="tag tag-prep">Preparing / Payment Confirmed</span>
+        <div class="title">3. PTE Academic Preparing</div>
+        <div class="desc">Payment successful. Redemption guide card links directly to the Pearson PTE Academic explore page.</div>
+        <div class="target-url">→ /exam-vouchers/pearson-pte-academic-voucher</div>
+      </a>
+
+      <a class="card" href="./04-pte-voucher-delivered.html" target="_blank">
+        <span class="tag tag-customer">Instant Delivery</span>
+        <div class="title">4. PTE Academic Delivered</div>
+        <div class="desc">Live voucher code delivered with verified PTE Academic redemption steps and official portal redirect.</div>
+        <div class="target-url">→ /exam-vouchers/pearson-pte-academic-voucher</div>
+      </a>
+
+      <a class="card" href="./05-toefl-payment-preparing.html" target="_blank">
+        <span class="tag tag-prep">Preparing / Payment Confirmed</span>
+        <div class="title">5. TOEFL iBT Preparing</div>
+        <div class="desc">Payment confirmed. Dynamic redemption guide points to ETS TOEFL iBT official page.</div>
+        <div class="target-url">→ /exam-vouchers/ets-toefl-voucher</div>
+      </a>
+
+      <a class="card" href="./06-toefl-voucher-delivered.html" target="_blank">
+        <span class="tag tag-customer">Instant Delivery</span>
+        <div class="title">6. TOEFL iBT Delivered</div>
+        <div class="desc">Delivered code with ETS TOEFL redemption guide and step-by-step instructions.</div>
+        <div class="target-url">→ /exam-vouchers/ets-toefl-voucher</div>
+      </a>
+
+      <a class="card" href="./07-gre-voucher-delivered.html" target="_blank">
+        <span class="tag tag-customer">Instant Delivery</span>
+        <div class="title">7. GRE Voucher Delivered</div>
+        <div class="desc">Delivered GRE voucher code with dynamic link to ETS GRE redemption instructions.</div>
+        <div class="target-url">→ /exam-vouchers/ets-gre-voucher</div>
+      </a>
+
+      <a class="card" href="./08-duolingo-voucher-delivered.html" target="_blank">
+        <span class="tag tag-customer">Instant Delivery</span>
+        <div class="title">8. Duolingo English Test Delivered</div>
+        <div class="desc">Delivered DET voucher code with dynamic link to Duolingo English Test redemption guide.</div>
+        <div class="target-url">→ /exam-vouchers/duolingo-english-test-voucher</div>
+      </a>
+
+      <a class="card" href="./09-manual-fulfillment-preparing.html" target="_blank">
+        <span class="tag tag-prep">Out of Stock / Manual</span>
+        <div class="title">9. PTE Core Manual Fulfillment</div>
+        <div class="desc">Paid order placed when stock was empty. Shows redemption guide for Pearson PTE Core.</div>
+        <div class="target-url">→ /exam-vouchers/pearson-pte-core-voucher</div>
+      </a>
+    </div>
+
+    <div class="section-title">Admin &amp; Operational Emails</div>
+    <div class="grid">
+      <a class="card" href="./10-admin-fulfillment-required.html" target="_blank">
+        <span class="tag tag-admin">Admin Alert</span>
+        <div class="title">10. Admin Fulfillment Required</div>
+        <div class="desc">Internal alert when a paid order requires manual code sourcing.</div>
+      </a>
+
+      <a class="card" href="./11-registration-otp.html" target="_blank">
+        <span class="tag tag-auth">Authentication</span>
+        <div class="title">11. Registration OTP</div>
+        <div class="desc">Lightweight verification code email with large 6-digit pin.</div>
+      </a>
+
+      <a class="card" href="./12-password-reset.html" target="_blank">
+        <span class="tag tag-auth">Security</span>
+        <div class="title">12. Password Reset</div>
+        <div class="desc">Secure password recovery email with 60-minute token expiration.</div>
+      </a>
+
+      <a class="card" href="./13-admin-voucher-sale.html" target="_blank">
+        <span class="tag tag-admin">Operational</span>
+        <div class="title">13. Admin Voucher Sale</div>
+        <div class="desc">Real-time sale notification with payment reference and details.</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

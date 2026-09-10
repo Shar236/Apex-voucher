@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Sora } from 'next/font/google';
 import { ThemeProvider, THEME_INIT_SCRIPT } from '@/components/theme-provider';
+import { CurrencyProvider } from '@/lib/currency';
+import { getSessionCurrency } from '@/lib/currency-server';
 import { Toaster } from '@/components/ui/toast';
 import { AuthProvider } from '@/components/auth-provider';
 import { CartProvider } from '@/components/cart-provider';
@@ -48,8 +50,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({ children }: LayoutProps<'/'>) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const config = await getWebsiteConfig();
+  // Session display currency from the short-lived cookie (null on first visit —
+  // the client provider then asks the backend once and sets the cookie).
+  const sessionCurrency = await getSessionCurrency();
 
   return (
     <html
@@ -63,32 +68,34 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
       </head>
       <body className="antialiased min-h-screen flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
-          <AuthProvider>
-            <CartProvider>
-              <VoucherProvider>
-                <Navbar
-                  supportPhone={config.footerSettings.phone}
-                  supportEmail={config.footerSettings.email}
-                  announcementText={config.announcementSettings.text}
-                  announcementEnabled={config.announcementSettings.enabled !== false}
-                  announcementLink={config.announcementSettings.link}
-                  announcementOverrideWithCampaign={config.announcementSettings.overrideWithCampaign === true}
-                  activeCampaignTitle={config.activeCampaign ? config.activeCampaign.title || null : null}
-                />
-                <CartToast />
-                <main className="flex-1">{children}</main>
-                <Footer
-                  description={config.footerSettings.description}
-                  phone={config.footerSettings.phone}
-                  email={config.footerSettings.email}
-                  copyright={config.footerSettings.copyright}
-                />
-                <CartDrawer />
-                <CheckoutModal />
-                <Toaster />
-              </VoucherProvider>
-            </CartProvider>
-          </AuthProvider>
+          <CurrencyProvider initialCurrency={sessionCurrency}>
+            <AuthProvider>
+              <CartProvider>
+                <VoucherProvider>
+                  <Navbar
+                    supportPhone={config.footerSettings.phone}
+                    supportEmail={config.footerSettings.email}
+                    announcementText={config.announcementSettings.text}
+                    announcementEnabled={config.announcementSettings.enabled !== false}
+                    announcementLink={config.announcementSettings.link}
+                    announcementOverrideWithCampaign={config.announcementSettings.overrideWithCampaign === true}
+                    activeCampaignTitle={config.activeCampaign ? config.activeCampaign.title || null : null}
+                  />
+                  <CartToast />
+                  <main className="flex-1">{children}</main>
+                  <Footer
+                    description={config.footerSettings.description}
+                    phone={config.footerSettings.phone}
+                    email={config.footerSettings.email}
+                    copyright={config.footerSettings.copyright}
+                  />
+                  <CartDrawer />
+                  <CheckoutModal />
+                  <Toaster />
+                </VoucherProvider>
+              </CartProvider>
+            </AuthProvider>
+          </CurrencyProvider>
         </ThemeProvider>
       </body>
     </html>

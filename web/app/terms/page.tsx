@@ -10,7 +10,7 @@ export const metadata: Metadata = buildMetadata({
 });
 
 const SUPPORT_PHONE = '+91 98559 26113';
-const SUPPORT_EMAIL = 'apexvouchers@gmail.com';
+const SUPPORT_EMAIL = 'info@apexvouchers.com';
 
 const SECTIONS = [
   {

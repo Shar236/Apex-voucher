@@ -69,6 +69,7 @@ const fulfillmentRequestSchema = new mongoose.Schema(
       index: true,
     },
     productName: { type: String, required: true, trim: true },
+    productSlug: { type: String, trim: true, default: '' },
     voucherType: { type: String, required: true, uppercase: true, trim: true },
     quantity: { type: Number, default: 1, min: 1 },
     amountPaid: { type: Number, required: true, min: 0 },

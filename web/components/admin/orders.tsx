@@ -106,7 +106,7 @@ function OrderDetailPanel({ order }: { order: AdminOrder }) {
         <F label="Razorpay Order ID" value={o.razorpayOrderId} mono />
         <F label="Razorpay Payment ID" value={o.razorpayPaymentId || o.paymentReference} mono />
         <F label="Payment Provider" value={o.paymentProvider} />
-        <F label="Amount" value={`${formatPrice(o.total)} ${o.currency || 'INR'}`} />
+        <F label="Amount" value={`${formatPrice(o.total, (o.currency as 'INR' | 'USD') || 'INR')} ${o.currency || 'INR'}`} />
         <F label="Payment Status" value={o.paymentStatus} />
         <F label="Order Status" value={o.orderStatus} />
         <F label="Fulfillment Status" value={o.fulfillmentStatus} />
@@ -292,7 +292,7 @@ function FragmentRow({
           {o.userId?.name || o.customerSnapshot?.name || 'Guest'}
           <div className="text-[10px] text-neutral-400">{o.userId?.email || o.customerSnapshot?.email || ''}</div>
         </Td>
-        <Td className="text-right tabular-nums">{formatPrice(o.total)}</Td>
+        <Td className="text-right tabular-nums">{formatPrice(o.total, (o.currency as 'INR' | 'USD') || 'INR')}</Td>
         <Td>{(o.items || []).length}</Td>
         <Td><Pill text={o.orderStatus || '—'} /></Td>
         <Td><Pill text={o.paymentStatus || '—'} tint="sky" /></Td>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Heart, Mail, Phone } from 'lucide-react';
+import { Heart, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { ApexLogo } from '@/components/apex-logo';
 import { CALCULATORS } from '@/lib/calculators';
 
@@ -60,13 +60,13 @@ const SERVICE_LINKS = [
 ] satisfies readonly FooterNavLink[];
 
 const LINK_CLASS =
-  'font-normal text-left text-neutral-400 transition-colors hover:text-accent';
+  'font-normal text-left text-neutral-500 transition-colors hover:text-accent';
 
 const HEADING_CLASS =
-  'font-heading text-xs font-medium uppercase tracking-wider text-white';
+  'font-heading text-xs font-semibold uppercase tracking-wider text-neutral-800';
 
 const BADGE_CLASS =
-  'rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium text-accent';
+  'rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent';
 
 const FooterLink = ({
   href,
@@ -90,7 +90,7 @@ const Badge = ({ children }: { children: ReactNode }) => (
 export function Footer({
   description = 'Official platform for discounted English language exam vouchers (PTE, IELTS, TOEFL, Duolingo). Test smarter, save more.',
   phone = '+91 9855926113',
-  email = 'apexvouchers@gmail.com',
+  email = 'info@apexvouchers.com',
   copyright = '© 2026 Apex Vouchers. All rights reserved.',
 }: FooterProps) {
   const phoneNumber = phone.replace(/\s+/g, '');
@@ -107,11 +107,11 @@ export function Footer({
 
   return (
     <footer
-      className="border-t border-white/5 bg-[#0B0D12] text-xs text-neutral-400"
+      className="border-t border-neutral-200 bg-white text-xs text-neutral-500"
       aria-label="Footer"
     >
       <div className="mx-auto max-w-7xl px-4 pb-12 pt-16 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-8 border-b border-white/5 pb-12 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-8 border-b border-neutral-200 pb-12 sm:grid-cols-3 lg:grid-cols-6">
           {/* Brand */}
           <div className="col-span-2 space-y-4 sm:col-span-3 lg:col-span-1">
             <Link
@@ -119,15 +119,15 @@ export function Footer({
               aria-label="Apex Vouchers home"
               className="inline-block"
             >
-              <ApexLogo showTagline whiteText />
+              <ApexLogo showTagline />
             </Link>
 
-            <p className="text-xs font-normal leading-relaxed text-neutral-400">
+            <p className="text-xs font-normal leading-relaxed text-neutral-500">
               {description}
             </p>
 
             <div className="space-y-1.5 pt-1 text-[11px]">
-              <div className="flex items-center gap-1.5 text-neutral-300">
+              <div className="flex items-center gap-1.5 text-neutral-600">
                 <Phone
                   aria-hidden="true"
                   className="h-3.5 w-3.5 shrink-0 text-accent"
@@ -141,7 +141,7 @@ export function Footer({
                 </a>
               </div>
 
-              <div className="flex items-center gap-1.5 text-neutral-300">
+              <div className="flex items-center gap-1.5 text-neutral-600">
                 <Mail
                   aria-hidden="true"
                   className="h-3.5 w-3.5 shrink-0 text-accent"
@@ -185,7 +185,7 @@ export function Footer({
             <h2 className={HEADING_CLASS}>
               <FooterLink
                 href="/calculators"
-                className="flex items-center justify-between gap-2 transition-colors hover:text-accent"
+                className="flex items-center justify-between gap-2 font-semibold text-neutral-800 transition-colors hover:text-accent"
               >
                 <span>Score Calculators</span>
                 <Badge>{CALCULATORS.length} FREE</Badge>
@@ -271,7 +271,7 @@ export function Footer({
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`${LINK_CLASS} text-xs text-neutral-300`}
+                  className={`${LINK_CLASS} text-xs text-neutral-600`}
                   aria-label="Contact Apex Vouchers on WhatsApp"
                 >
                   Live WhatsApp Support
@@ -279,8 +279,9 @@ export function Footer({
               </li>
             </ul>
 
-            <p className="text-[11px] font-normal leading-relaxed text-neutral-400">
-              256-bit SSL Encrypted Secure Checkout
+            <p className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" aria-hidden="true" />
+              Safe &amp; Secure Checkout
             </p>
 
             <div
@@ -290,7 +291,7 @@ export function Footer({
               {PAYMENT_METHODS.map((method) => (
                 <span
                   key={method}
-                  className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-neutral-300"
+                  className="rounded border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-medium text-neutral-600"
                 >
                   {method}
                 </span>
@@ -300,7 +301,7 @@ export function Footer({
         </div>
 
         {/* Footer Bottom */}
-        <div className="flex flex-col items-center justify-between gap-4 pt-8 text-[11px] text-neutral-500 sm:flex-row">
+        <div className="flex flex-col items-center justify-between gap-4 pt-8 text-[11px] text-neutral-400 sm:flex-row border-t border-neutral-100 mt-0">
           <p>{copyright}</p>
 
           <div className="flex items-center gap-1 font-normal text-neutral-400">

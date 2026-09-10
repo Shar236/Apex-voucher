@@ -24,6 +24,7 @@ process.env.SMTP_FROM = '';
 
 const mongoose = (await import('mongoose')).default;
 const { connectDB } = await import('../config/db.js');
+const { config } = await import('../config/index.js');
 const { User } = await import('../models/User.js');
 const { hashPassword, signToken, protect, requireRole } = await import('../middleware/auth.js');
 const { errorHandler } = await import('../middleware/errorHandler.js');
@@ -151,10 +152,11 @@ const runTests = async () => {
   }
 
   // ── 3. live admin account state ────────────────────────────────────────
-  console.log('\n— live admin account (admin@apexvouchers.in) —');
+  const targetAdminEmail = (config.admin.email || 'admin@apexvouchers.in').toLowerCase();
+  console.log(`\n— live admin account (${targetAdminEmail}) —`);
   {
-    const live = await User.findOne({ email: 'admin@apexvouchers.in' }).select('+passwordHash');
-    ok(!!live, 'admin@apexvouchers.in exists');
+    const live = await User.findOne({ email: targetAdminEmail }).select('+passwordHash');
+    ok(!!live, `${targetAdminEmail} exists`);
     if (live) {
       ok(live.role === 'admin', 'role === admin');
       ok(live.status === 'active', 'status === active');
@@ -168,8 +170,8 @@ const runTests = async () => {
         (a) => !/@apex-test\.local$/i.test(a.email) && !/^test-/i.test(a.email)
       );
       ok(
-        real.length === 1 && real[0].email === 'admin@apexvouchers.in',
-        'the only non-fixture ACTIVE admin is admin@apexvouchers.in',
+        real.length === 1 && real[0].email === targetAdminEmail,
+        `the only non-fixture ACTIVE admin is ${targetAdminEmail}`,
         `real active admins: ${real.map((a) => a.email).join(', ') || 'none'}`
       );
     }

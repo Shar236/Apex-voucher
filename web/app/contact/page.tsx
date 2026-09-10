@@ -43,7 +43,7 @@ const CONTACT_METHODS = [
 
 export default async function ContactPage() {
   const config = await getWebsiteConfig();
-  const supportEmail = config.footerSettings.email || 'apexvouchers@gmail.com';
+  const supportEmail = config.footerSettings.email || 'info@apexvouchers.com';
   const supportPhone = config.footerSettings.phone || '+91 9855926113';
   const contactJsonLd = {
     '@context': 'https://schema.org',

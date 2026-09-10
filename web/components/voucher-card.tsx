@@ -7,10 +7,11 @@ import { useCart } from '@/components/cart-provider';
 import { useVoucher } from '@/components/voucher-provider';
 import { Button, StockBadge, PriceDisplay, DiscountBadge, ProviderLogo } from '@/components/ui';
 import type { Product, DurationOption } from '@/lib/types';
+import { unitDisplayPrice } from '@/lib/pricing';
 
 /** The single voucher card used on every product surface (grids, best-sellers, related rows). */
 export function VoucherCard({ product }: { product: Product }) {
-  const { formatPrice, addToCart } = useCart();
+  const { formatPrice, addToCart, currency } = useCart();
   const { startCheckout } = useVoucher();
   const detailHref = `/exam-vouchers/${product.slug || product._id || product.id}`;
 
@@ -23,8 +24,9 @@ export function VoucherCard({ product }: { product: Product }) {
   );
 
   // Derive price from the selected duration, otherwise from the product base.
-  const current = selectedDuration?.sellingPrice ?? product.discountedPrice ?? product.sellingPrice ?? 0;
-  const original = selectedDuration?.originalPrice ?? product.originalPrice ?? 0;
+  const priced = unitDisplayPrice(product, selectedDuration, currency);
+  const current = priced.current;
+  const original = priced.original;
   const discountPercent = original > current ? Math.round(((original - current) / original) * 100) : 0;
   const savings = Math.max(0, original - current);
 
@@ -106,8 +108,8 @@ export function VoucherCard({ product }: { product: Product }) {
       )}
 
       <div className="px-4 pt-3 flex items-end justify-between gap-2">
-        <PriceDisplay original={original} current={current} formatPrice={formatPrice} emphasis="ink" />
-        <DiscountBadge percent={discountPercent} savings={savings} formatPrice={formatPrice} />
+        <PriceDisplay original={original} current={current} formatPrice={(n) => formatPrice(n, priced.currency)} emphasis="ink" />
+        <DiscountBadge percent={discountPercent} savings={savings} formatPrice={(n) => formatPrice(n, priced.currency)} />
       </div>
 
       <div className="px-4 pt-4 pb-4 mt-auto space-y-2">

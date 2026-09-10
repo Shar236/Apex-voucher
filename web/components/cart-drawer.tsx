@@ -4,16 +4,17 @@ import Link from 'next/link';
 import { ShoppingBag, X, Trash2, ArrowRight, Lock, Ticket } from 'lucide-react';
 import { useCart } from '@/components/cart-provider';
 import { useVoucher } from '@/components/voucher-provider';
+import { unitDisplayPrice } from '@/lib/pricing';
 
 export function CartDrawer() {
-  const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, formatPrice } = useCart();
+  const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, formatPrice, currency } = useCart();
   const { startCheckout } = useVoucher();
 
   if (!isCartOpen) return null;
 
-  const totalAmount = cart.reduce((acc, item) => acc + (item.selectedDuration?.sellingPrice ?? item.discountedPrice ?? item.sellingPrice ?? 0) * item.quantity, 0);
-  const totalOriginal = cart.reduce((acc, item) => acc + (item.selectedDuration?.originalPrice ?? item.originalPrice ?? 0) * item.quantity, 0);
-  const totalSavings = totalOriginal - totalAmount;
+  const totalAmount = cart.reduce((acc, item) => { const p = unitDisplayPrice(item, item.selectedDuration, currency); return acc + p.current * item.quantity; }, 0);
+  const totalOriginal = cart.reduce((acc, item) => { const p = unitDisplayPrice(item, item.selectedDuration, currency); return acc + p.original * item.quantity; }, 0);
+  const totalSavings = Math.max(0, totalOriginal - totalAmount);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
@@ -42,35 +43,35 @@ export function CartDrawer() {
             <div className="space-y-3.5">
               {cart.map((item) => {
                 const id = (item._id || item.id) as string;
-                const unitPrice = item.selectedDuration?.sellingPrice ?? item.discountedPrice ?? item.sellingPrice ?? 0;
-                const unitOriginal = item.selectedDuration?.originalPrice ?? item.originalPrice ?? 0;
+                const itemKey = item.selectedDuration?.key ? `${id}::${item.selectedDuration.key}` : id;
+                const { current: unitPrice, original: unitOriginal, currency: itemCurrency } = unitDisplayPrice(item, item.selectedDuration, currency);
                 const unitSavings = Math.max(0, unitOriginal - unitPrice);
                 return (
-                  <div key={`${id}${item.selectedDuration?.key ? `::${item.selectedDuration.key}` : ''}`} className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 flex items-center justify-between gap-3 group hover:bg-white dark:hover:bg-[#161616] transition-all duration-200">
+                  <div key={itemKey} className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 flex items-center justify-between gap-3 group hover:bg-white dark:hover:bg-[#161616] transition-all duration-200">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-100 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                          Save {formatPrice(unitSavings)}
+                          Save {formatPrice(unitSavings, itemCurrency)}
                         </span>
                       </div>
                       <h4 className="font-heading font-extrabold text-sm text-neutral-900 dark:text-white leading-snug mb-1 line-clamp-2">
                         {item.name}
                         {item.selectedDuration?.label ? <span className="text-[11px] font-bold text-brand-pink"> — {item.selectedDuration.label}</span> : null}
                       </h4>
-                      <span className="font-heading font-black text-lg text-brand-pink leading-none">{formatPrice(unitPrice)}</span>
+                      <span className="font-heading font-black text-lg text-brand-pink leading-none">{formatPrice(unitPrice, itemCurrency)}</span>
                     </div>
 
                     <div className="flex flex-col items-end gap-2.5">
                       <div className="flex items-center gap-1.5 bg-white dark:bg-[#161616] rounded-xl p-1 border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
-                        <button onClick={() => updateQuantity(id, -1)} className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 font-black text-sm flex items-center justify-center transition-colors cursor-pointer">
+                        <button onClick={() => updateQuantity(itemKey, -1)} className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 font-black text-sm flex items-center justify-center transition-colors cursor-pointer">
                           −
                         </button>
                         <span className="text-sm font-black text-neutral-900 dark:text-white w-6 text-center tabular-nums">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(id, 1)} className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 font-black text-sm flex items-center justify-center transition-colors cursor-pointer">
+                        <button onClick={() => updateQuantity(itemKey, 1)} className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 font-black text-sm flex items-center justify-center transition-colors cursor-pointer">
                           +
                         </button>
                       </div>
-                      <button onClick={() => removeFromCart(id)} className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer">
+                      <button onClick={() => removeFromCart(itemKey)} className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer">
                         <Trash2 className="w-4 h-4" strokeWidth={2.5} />
                       </button>
                     </div>
@@ -100,16 +101,16 @@ export function CartDrawer() {
             <div className="space-y-2.5 p-4 rounded-2xl bg-[#FFF0F5] dark:bg-[#2A0A17] border border-brand-pink/20">
               <div className="flex justify-between items-center text-sm font-semibold text-neutral-500 dark:text-[#B5B5B5]">
                 <span>Subtotal (MRP)</span>
-                <span className="line-through">{formatPrice(totalOriginal)}</span>
+                <span className="line-through">{formatPrice(totalOriginal, currency)}</span>
               </div>
               <div className="flex justify-between items-center text-sm font-bold text-emerald-600 dark:text-emerald-400">
                 <span>🎁 Total Savings</span>
-                <span>− {formatPrice(totalSavings)}</span>
+                <span>− {formatPrice(totalSavings, currency)}</span>
               </div>
               <div className="h-px bg-brand-pink/20 my-1" />
               <div className="flex justify-between items-baseline pt-1">
                 <span className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider">Total Payable</span>
-                <span className="font-heading font-black text-3xl text-neutral-900 dark:text-white tabular-nums">{formatPrice(totalAmount)}</span>
+                <span className="font-heading font-black text-3xl text-neutral-900 dark:text-white tabular-nums">{formatPrice(totalAmount, currency)}</span>
               </div>
             </div>
 

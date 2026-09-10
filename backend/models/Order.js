@@ -39,6 +39,7 @@ const orderSchema = new mongoose.Schema(
       {
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
         productName: { type: String, required: true },
+        slug: { type: String, trim: true, default: '' },
         voucherType: { type: String, uppercase: true, trim: true, default: 'EXAM', index: true },
         brand: { type: String, default: '' },
         unitPrice: { type: Number, required: true },
@@ -52,8 +53,23 @@ const orderSchema = new mongoose.Schema(
     subtotal: { type: Number, required: true, min: 0 },
     discountAmount: { type: Number, default: 0, min: 0 },
     tax: { type: Number, default: 0, min: 0 },
+    // `total` is the amount actually CHARGED, in `currency` major units
+    // (whole rupees for INR; 2dp dollars for USD orders).
     total: { type: Number, required: true, min: 0 },
+    // Charge currency: 'INR' (India) or 'USD' (international). Existing orders
+    // default to INR — historical orders are never recalculated.
     currency: { type: String, default: 'INR' },
+    // ── Multi-currency audit trail (INR is the canonical base) ──────────────
+    // For USD orders these preserve the INR base pricing and the exact FX rate
+    // used at purchase time, so historical orders never change when the
+    // exchange rate moves. Null for INR orders.
+    baseSubtotalINR: { type: Number, default: null, min: 0 },
+    baseDiscountINR: { type: Number, default: null, min: 0 },
+    baseAmountINR: { type: Number, default: null, min: 0 },
+    fxRateUsed: { type: Number, default: null }, // INR per USD, e.g. 87.42
+    fxRateTimestamp: { type: Date, default: null }, // when that rate was fetched
+    fxRateSource: { type: String, default: null }, // provider host (no secrets)
+    countryCode: { type: String, default: null }, // server-detected ISO-2, e.g. 'US'
     promotionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Promotion',

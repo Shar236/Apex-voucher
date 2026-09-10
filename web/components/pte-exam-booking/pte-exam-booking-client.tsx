@@ -9,6 +9,8 @@ import {
   Lock, Star, Quote, Ticket, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import { pteBookingApi, formatPrice } from '@/lib/api';
+import { useCurrency } from '@/lib/currency';
+import { unitDisplayPrice } from '@/lib/pricing';
 import { PhoneInput } from '@/components/auth/phone-input';
 import { FaqAccordion } from '@/components/blog/faq-accordion';
 import { PTE_INDIAN_CITIES, EXAM_TYPE_OPTIONS, TIME_OPTIONS, BEFORE_YOU_BOOK_CHECKLIST, BOOKING_MISTAKES, FAQ_LIST } from '@/lib/pte-booking-data';
@@ -55,6 +57,7 @@ interface SubmittedData {
 export function PTEExamBookingPage({ products }: { products: Product[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { currency } = useCurrency();
   const formRef = useRef<HTMLDivElement>(null);
   const howItWorksRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -83,7 +86,7 @@ export function PTEExamBookingPage({ products }: { products: Product[] }) {
   const [showStickyCta, setShowStickyCta] = useState(false);
 
   const supportPhone = '+91 9855926113';
-  const supportEmail = 'apexvouchers@gmail.com';
+  const supportEmail = 'info@apexvouchers.com';
 
   useEffect(() => {
     const examParam = searchParams.get('exam')?.toLowerCase();
@@ -562,11 +565,17 @@ export function PTEExamBookingPage({ products }: { products: Product[] }) {
                   </div>
                   <h3 className="font-heading font-black text-xl text-neutral-900 dark:text-white mb-1.5">{product.name}</h3>
                   <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed mb-5">{product.shortDescription || product.description}</p>
-                  <div className="flex items-end gap-2.5 mb-4">
-                    <span className="font-heading font-black text-2xl sm:text-3xl text-neutral-900 dark:text-white">{formatPrice(product.sellingPrice)}</span>
-                    <span className="text-sm font-bold text-neutral-400 line-through mb-1">{formatPrice(product.originalPrice)}</span>
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 mb-1">Save {formatPrice(Math.max(0, (product.originalPrice || 0) - (product.sellingPrice || 0)))}</span>
-                  </div>
+                  {(() => {
+                    const priced = unitDisplayPrice(product, undefined, currency);
+                    const savings = Math.max(0, priced.original - priced.current);
+                    return (
+                      <div className="flex items-end gap-2.5 mb-4">
+                        <span className="font-heading font-black text-2xl sm:text-3xl text-neutral-900 dark:text-white">{formatPrice(priced.current, priced.currency)}</span>
+                        <span className="text-sm font-bold text-neutral-400 line-through mb-1">{formatPrice(priced.original, priced.currency)}</span>
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 mb-1">Save {formatPrice(savings, priced.currency)}</span>
+                      </div>
+                    );
+                  })()}
                   <button onClick={() => router.push(`/exam-vouchers/${product.slug}`)} className="mt-auto w-full btn-pink py-3.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer shadow-md">
                     View &amp; Buy This Voucher <ArrowRight className="w-4 h-4" />
                   </button>
@@ -665,7 +674,7 @@ export function PTEExamBookingPage({ products }: { products: Product[] }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-800 text-xs font-bold text-slate-300">
               <div className="flex items-center gap-2"><span className="text-emerald-400 font-black">✓</span><span>You own your myPTE login</span></div>
               <div className="flex items-center gap-2"><span className="text-emerald-400 font-black">✓</span><span>No password collection</span></div>
-              <div className="flex items-center gap-2"><span className="text-emerald-400 font-black">✓</span><span>256-bit encrypted data</span></div>
+              <div className="flex items-center gap-2"><span className="text-emerald-400 font-black">✓</span><span>Secure data handling</span></div>
             </div>
           </div>
         </Reveal>

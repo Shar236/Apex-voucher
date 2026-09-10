@@ -1,8 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { ThemedBrandLogo } from '@/components/ui/themed-brand-logo';
 import { SectionHeading, Badge, Button } from '@/components/ui';
 import { formatPrice } from '@/lib/api';
+import { useCurrency } from '@/lib/currency';
+import { unitDisplayPrice } from '@/lib/pricing';
 import type { Product } from '@/lib/types';
 
 const CATEGORIES = [
@@ -13,6 +17,8 @@ const CATEGORIES = [
 ];
 
 export function ExamCategorySection({ products }: { products: Product[] }) {
+  const { currency } = useCurrency();
+
   return (
     <section id="choose-your-exam" className="py-16 sm:py-24 bg-surface border-b border-line transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -24,9 +30,11 @@ export function ExamCategorySection({ products }: { products: Product[] }) {
               const key = cat.searchKey;
               return (p.name || '').toLowerCase().includes(key) || (p.brand || '').toLowerCase().includes(key) || (p.slug || '').toLowerCase().includes(key);
             });
-            const price = matched?.discountedPrice ?? matched?.sellingPrice ?? 15499;
-            const savings = matched?.savings ?? Math.max(0, (matched?.originalPrice || 18900) - price);
             const target = matched || products[0];
+            const priced = target ? unitDisplayPrice(target, undefined, currency) : { current: 15499, original: 18900, currency };
+            const price = priced.current;
+            const savings = Math.max(0, priced.original - priced.current);
+            const itemCurrency = priced.currency;
             const href = target ? `/exam-vouchers/${target.slug}` : '/exam-vouchers';
 
             return (
@@ -47,9 +55,9 @@ export function ExamCategorySection({ products }: { products: Product[] }) {
                   <div className="flex items-baseline justify-between gap-2">
                     <div className="min-w-0">
                       <span className="block text-[10px] uppercase tracking-[0.08em] font-medium text-ink-muted">Starting from</span>
-                      <span className="font-heading font-semibold text-xl text-ink">{formatPrice(price)}</span>
+                      <span className="font-heading font-semibold text-xl text-ink">{formatPrice(price, itemCurrency)}</span>
                     </div>
-                    {savings > 0 && <span className="shrink-0 px-2 py-0.5 rounded-md bg-success/12 text-success border border-success/20 text-[11px] font-medium whitespace-nowrap">Save {formatPrice(savings)}</span>}
+                    {savings > 0 && <span className="shrink-0 px-2 py-0.5 rounded-md bg-success/12 text-success border border-success/20 text-[11px] font-medium whitespace-nowrap">Save {formatPrice(savings, itemCurrency)}</span>}
                   </div>
 
                   <Button as={Link} href={href} variant={cat.featured ? 'primary' : 'secondary'} size="md" fullWidth>

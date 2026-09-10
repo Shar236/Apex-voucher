@@ -32,7 +32,7 @@ const EXAM_CATEGORIES = [
 
 export function Navbar({
   supportPhone = '+91 9855926113',
-  supportEmail = 'apexvouchers@gmail.com',
+  supportEmail = 'info@apexvouchers.com',
   announcementText = '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers',
   announcementEnabled = true,
   announcementLink,

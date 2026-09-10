@@ -40,7 +40,7 @@ interface WebsiteSettings {
 
 const DEFAULT_HERO = { headingLine1: 'Your Exam. Your Dream.', headingHighlight: 'Our Vouchers.', headingLine3: 'Your Savings.', descriptionText: 'Get official voucher codes for PTE, IELTS, TOEFL & Duolingo at the best prices and save more on your exam fees.', ctaText: 'Browse Vouchers', ctaLink: '/#vouchers' };
 const DEFAULT_ANNOUNCEMENT = { enabled: true, text: '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers', link: '/#vouchers', overrideWithCampaign: true };
-const DEFAULT_FOOTER = { description: 'Apex Vouchers helps candidates save on official exam voucher fees for PTE, IELTS, TOEFL and Duolingo with 100% genuine guaranteed vouchers.', phone: '+91 9855926113', email: 'apexvouchers@gmail.com', copyright: '© 2026 Apex Vouchers. All rights reserved.' };
+const DEFAULT_FOOTER = { description: 'Apex Vouchers helps candidates save on official exam voucher fees for PTE, IELTS, TOEFL and Duolingo with 100% genuine guaranteed vouchers.', phone: '+91 9855926113', email: 'info@apexvouchers.com', copyright: '© 2026 Apex Vouchers. All rights reserved.' };
 const DEFAULT_POLICY = {
   apexRefund: {
     enabled: true, effectiveDate: '2026-01-01', eligibilityCriteria: 'Vouchers that are 100% unredeemed and unallocated on the Pearson / ETS portal within the allowable refund window.',

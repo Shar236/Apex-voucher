@@ -64,6 +64,15 @@ export const createRazorpayOrder = async ({ amountPaise, currency = 'INR', recei
   if (!resp.ok || !data?.id) {
     // Log a redacted diagnostic — never the request auth header or secret.
     console.error(`[razorpay:create-order:failed] status=${resp.status} error=${data?.error?.description || 'unknown'}`);
+    if (currency && String(currency).toUpperCase() !== 'INR') {
+      // Most common cause: the Razorpay account is not enabled for
+      // international payments (Dashboard → Settings → International).
+      throw new AppError(
+        'International payments are temporarily unavailable. Please try again shortly or contact support.',
+        502,
+        'PAYMENT_INTERNATIONAL_UNAVAILABLE',
+      );
+    }
     throw new AppError('Failed to create payment order', 502, 'PAYMENT_ORDER_CREATE_FAILED');
   }
   return data;

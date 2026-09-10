@@ -7,6 +7,7 @@ import { isValidObjectId } from '../config/db.js';
 import { escapeRegex } from '../utils/index.js';
 import { config } from '../config/index.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import { createDisplayPricingResolver } from '../services/pricing.js';
 
 const baseUrl = () => config.siteUrl || config.business?.website || config.clientUrl || 'http://localhost:5173';
 
@@ -22,7 +23,7 @@ const DEFAULT_ANNOUNCEMENT = {
 const DEFAULT_FOOTER = {
   description: 'Apex Vouchers helps candidates save on official exam voucher fees for PTE, IELTS, TOEFL and Duolingo with 100% genuine guaranteed vouchers.',
   phone: '+91 9855926113',
-  email: 'apexvouchers@gmail.com',
+  email: 'info@apexvouchers.com',
   copyright: '© 2026 Apex Vouchers. All rights reserved.',
   usefulLinks: [
     { label: 'About Us', url: '/#about' },
@@ -71,8 +72,19 @@ export const getLayoutConfig = async (_req, res, next) => {
  * also enforced in createPaymentOrder). Real stock counts stay in the admin
  * console (adminController.aggregateVoucherStatsByProduct), not here.
  */
-const applyAvailability = async (products) => {
+const applyAvailability = async (products, req = null) => {
   if (!products.length) return products;
+  // One geo/FX resolution serves the whole page — the FX rate is cached
+  // backend-side, so N products cost zero extra provider calls (requirement:
+  // never call the FX API per render/card/page).
+  let resolvePricing = null;
+  if (req) {
+    try {
+      resolvePricing = await createDisplayPricingResolver(req);
+    } catch {
+      resolvePricing = null;
+    }
+  }
   return products.map((p) => {
     const raw = typeof p.toObject === 'function' ? p.toObject() : p;
     const savings = Math.max(0, (raw.originalPrice || 0) - (raw.sellingPrice || 0));
@@ -113,6 +125,30 @@ const applyAvailability = async (products) => {
       stockStatus: isComingSoon ? 'COMING SOON' : 'IN STOCK',
       discountedPrice: raw.sellingPrice,
       savings,
+      // ── Display pricing (INR is the base; USD derived server-side) ────────
+      // `pricing.currency` is the display/billing currency for this visitor.
+      // The frontend formats `displayPrice` — it NEVER converts currencies.
+      ...(resolvePricing
+        ? {
+            pricing: resolvePricing(raw.sellingPrice, raw.originalPrice),
+            // Duration variants get display prices too (USD), keeping every
+            // surface consistent for international visitors.
+            durationOptions: Array.isArray(raw.durationOptions)
+              ? raw.durationOptions.map((o) => {
+                  if (!o || o.enabled === false) return o;
+                  const priced = resolvePricing(o.sellingPrice, o.originalPrice || 0);
+                  return {
+                    ...o,
+                    displaySellingPrice: priced.displayPrice,
+                    displayOriginalPrice: priced.displayOriginalPrice,
+                    displayCurrency: priced.currency,
+                    inr: priced.inr,
+                    usd: priced.usd,
+                  };
+                })
+              : raw.durationOptions,
+          }
+        : {}),
     };
   });
 };
@@ -192,7 +228,7 @@ export const listProducts = async (req, res, next) => {
     }
 
     const products = await Product.find(filter).sort({ displayOrder: 1, featured: -1, createdAt: -1 }).lean();
-    const hydrated = await applyAvailability(products);
+    const hydrated = await applyAvailability(products, req);
     res.json({ success: true, count: hydrated.length, data: hydrated });
   } catch (err) {
     next(err);
@@ -224,7 +260,7 @@ export const getProduct = async (req, res, next) => {
     if (!product || (isPubliclyHidden && req.user?.role !== 'admin')) {
       return next(new AppError('Product not found', 404, 'NOT_FOUND'));
     }
-    const hydrated = (await applyAvailability([product]))[0];
+    const hydrated = (await applyAvailability([product], req))[0];
 
     let related = [];
     if (hydrated.relatedProducts && hydrated.relatedProducts.length > 0) {
@@ -234,14 +270,14 @@ export const getProduct = async (req, res, next) => {
       const rel = await Product.find({ _id: { $in: orderedIds }, active: true }).select('name slug brand provider image sellingPrice originalPrice badge badgeType seo featured').lean();
       const byId = new Map(rel.map((r) => [String(r._id), r]));
       const orderedRel = orderedIds.map((rid) => byId.get(rid)).filter(Boolean);
-      related = await applyAvailability(orderedRel);
+      related = await applyAvailability(orderedRel, req);
     } else if (hydrated.brand || hydrated.provider) {
       const rel = await Product.find({
         _id: { $ne: hydrated._id },
         active: true,
         $or: [{ brand: hydrated.brand }, { provider: hydrated.provider }, { category: hydrated.category }],
       }).select('name slug brand provider image sellingPrice originalPrice badge badgeType seo featured').sort({ featured: -1, displayOrder: 1 }).limit(4).lean();
-      related = await applyAvailability(rel);
+      related = await applyAvailability(rel, req);
     }
 
     const jsonLd = buildProductJsonLd(hydrated);
@@ -366,7 +402,7 @@ export const getWebsiteConfig = async (req, res, next) => {
       contactPoint: {
         '@type': 'ContactPoint',
         contactType: 'customer support',
-        email: 'apexvouchers@gmail.com',
+        email: 'info@apexvouchers.com',
         telephone: '+91 9855926113',
         areaServed: 'IN',
       },
@@ -385,7 +421,7 @@ export const getWebsiteConfig = async (req, res, next) => {
       },
     };
 
-    const hydratedProducts = await applyAvailability(products);
+    const hydratedProducts = await applyAvailability(products, req);
 
     const policySettings = policySettingsDoc?.value || {
       apexRefund: {

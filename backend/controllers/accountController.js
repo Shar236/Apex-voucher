@@ -472,7 +472,10 @@ export const dashboardStats = async (req, res, next) => {
       {
         $group: {
           _id: null,
-          totalPaid: { $sum: '$total' },
+          // Savings compare INR base price vs INR amount paid. USD orders
+          // charge `total` in dollars — use their canonical baseAmountINR so
+          // currencies are never mixed.
+          totalPaid: { $sum: { $ifNull: ['$baseAmountINR', '$total'] } },
           totalOriginal: {
             $sum: { $sum: { $map: { input: '$items', in: { $multiply: ['$$this.originalPrice', '$$this.quantity'] } } } },
           },

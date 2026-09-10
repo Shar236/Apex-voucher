@@ -344,7 +344,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
         <h3 className="font-black text-lg mb-4 text-neutral-900 dark:text-white">Recent Orders</h3>
         <div className="space-y-2.5">
           {(tables.recentOrders || []).map((o) => {
-            const ord = o as { _id: string; orderNo?: string; total?: number; orderStatus?: string; paymentStatus?: string; createdAt?: string; userId?: { name?: string; email?: string } | null };
+            const ord = o as { _id: string; orderNo?: string; total?: number; currency?: string; orderStatus?: string; paymentStatus?: string; createdAt?: string; userId?: { name?: string; email?: string } | null };
             return (
               <div key={ord._id} className="flex items-center justify-between flex-wrap gap-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929]">
                 <div className="flex items-center gap-3">
@@ -358,7 +358,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void })
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold text-neutral-500">{ord.paymentStatus || '—'} / {ord.orderStatus || '—'}</span>
-                  <span className="font-heading font-black text-brand-pink">{formatPrice(ord.total)}</span>
+                  <span className="font-heading font-black text-brand-pink">{formatPrice(ord.total, (ord.currency as 'INR' | 'USD') || 'INR')}</span>
                 </div>
               </div>
             );

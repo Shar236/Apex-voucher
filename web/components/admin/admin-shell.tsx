@@ -259,7 +259,7 @@ export function AdminHeader({
                   {user?.name || 'Apex Administrator'}
                 </p>
                 <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 truncate">
-                  {user?.email || 'apexvouchers@gmail.com'}
+                  {user?.email || 'info@apexvouchers.com'}
                 </p>
                 <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-mono text-[9px] font-black">
                   Super Admin

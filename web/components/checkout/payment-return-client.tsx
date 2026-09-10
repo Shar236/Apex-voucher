@@ -149,7 +149,7 @@ export function PaymentReturnClient() {
             <div>
               <span className="text-xs font-medium uppercase tracking-widest text-accent block mb-1">ORDER # {order?.orderNo || orderId}</span>
               <h2 className="font-heading font-medium text-3xl">Congratulations! 🎉</h2>
-              <p className="text-xs text-ink-muted font-normal mt-1.5 max-w-sm mx-auto">Your payment was successful. Your voucher is being prepared and will be delivered to your email and My Vouchers within 1–2 minutes. You can safely close this page.</p>
+              <p className="text-xs text-ink-muted font-normal mt-1.5 max-w-sm mx-auto">Your payment was successful. Your voucher is delivered to your email within 1–2 minutes. You can safely close this page.</p>
             </div>
             <div className="mx-auto w-full max-w-xs grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-normal text-ink-muted text-left">
               <span>Payment</span>

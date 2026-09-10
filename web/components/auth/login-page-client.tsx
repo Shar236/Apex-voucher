@@ -103,7 +103,7 @@ export function LoginPageClient() {
         </div>
         <div className="mt-4 pt-4 border-t border-line flex items-center justify-center text-[11px] font-bold text-neutral-400">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> 256-bit Encrypted
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Safe &amp; Secure
           </span>
         </div>
       </form>

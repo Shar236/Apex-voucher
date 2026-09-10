@@ -4,7 +4,7 @@ import { SectionHeading } from '@/components/ui';
 const FEATURES = [
   { icon: Tag, title: 'Unmatched Discount Prices', desc: 'Save big on PTE, GRE, TOEFL, and Duolingo. Zero hidden fees. Direct official reseller pricing.', badge: '💰 Max Student Savings' },
   { icon: Zap, title: 'Faster Than Your OTP', desc: 'Receive your unique voucher code instantly in your email within 10 seconds of payment.', badge: '⚡ 10-Second Express' },
-  { icon: Lock, title: '256-Bit SSL Checkout', desc: 'Pay safely via UPI, Credit/Debit Cards, NetBanking or EMI protected by bank-grade encryption.', badge: '🔒 100% Secure' },
+  { icon: Lock, title: 'Secure Payment', desc: 'Pay safely via UPI, Credit/Debit Cards, NetBanking or EMI — your payment is protected end to end.', badge: '🔒 100% Secure' },
   { icon: GraduationCap, title: 'Up to 11 Months Validity', desc: 'Book your exam whenever you are confident. Long validity period gives you complete peace of mind.', badge: '📅 Maximum Validity' },
   { icon: Headphones, title: 'Real Human Support Desk', desc: 'Got stuck or need help selecting an exam date? Our student desk responds instantly.', badge: '💬 Support Desk' },
   { icon: CheckCircle2, title: 'Zero Credentials Sharing', desc: 'Redeem directly on official test provider websites (Pearson, ETS, Duolingo). Zero credential sharing.', badge: '✓ 100% Safe' },

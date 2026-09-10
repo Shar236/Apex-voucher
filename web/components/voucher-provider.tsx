@@ -47,6 +47,7 @@ export interface AccountOrder {
   paymentStatus: string;
   createdAt: string;
   total: number;
+  currency?: string;
   items?: unknown[];
   billingDetails?: { email?: string; [key: string]: unknown };
   promoCode?: string;

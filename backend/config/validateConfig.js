@@ -25,6 +25,14 @@ export const assertPaymentConfig = () => {
   line('RAZORPAY_KEY_SECRET', razorpay.keySecret ? `set (${razorpay.keySecret.length} chars)` : '(not set)');
   line('RAZORPAY_WEBHOOK_SECRET', razorpay.webhookSecretExplicit ? 'set (explicit)' : razorpay.keySecret ? 'not set → using key secret (dev only)' : '(not set)');
   line('SERVER_URL', config.serverUrl);
+  line('FX_API_URL', config.fx.apiUrl || '(not set — USD pricing disabled)');
+  line('FX_RATE_CACHE_TTL', `${config.fx.cacheTtlSeconds}s`);
+  line('GEO_FALLBACK_COUNTRY', config.geo.fallbackCountry);
+
+  // International (USD) payments require BOTH a working FX rate service AND
+  // international payments enabled on the Razorpay account itself
+  // (Razorpay Dashboard → Settings → International / payment pages).
+  console.log('  ℹ  International (USD) checkout requires "International Payments" to be ENABLED on the Razorpay account (Dashboard → Settings). Until it is, USD order creation fails with PAYMENT_INTERNATIONAL_UNAVAILABLE — Indian INR payments are unaffected.');
 
   if (config.paymentProvider !== 'razorpay') {
     problems.push(`PAYMENT_PROVIDER is "${config.paymentProvider}" — only "razorpay" is implemented.`);

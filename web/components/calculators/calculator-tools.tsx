@@ -1226,7 +1226,8 @@ function CgpaTool() {
   const [cgpa, setCgpa] = useState('8.6');
   const [maxCgpa, setMaxCgpa] = useState('10');
 
-  const cgpaErr = rangeError(parseScore(cgpa), 0, 10);
+  const parsedMaxCgpa = parseFloat(maxCgpa) || 10;
+  const cgpaErr = rangeError(parseScore(cgpa), 0, parsedMaxCgpa);
   const maxErr = rangeError(parseScore(maxCgpa), 4, 10);
   const hasError = Boolean(cgpaErr || maxErr);
   const result = hasError
@@ -1235,6 +1236,7 @@ function CgpaTool() {
 
   const handleClearAll = () => {
     setCgpa('');
+    setMaxCgpa('10');
   };
 
   const shareSummary = result && result.gpa !== null
@@ -1265,7 +1267,7 @@ function CgpaTool() {
                 value={cgpa}
                 onChange={setCgpa}
                 min={0}
-                max={parseFloat(maxCgpa) || 10}
+                max={parsedMaxCgpa}
                 step={0.01}
                 icon={<BarChart3 className="w-4 h-4" />}
                 iconBgClass="bg-pink-50 text-accent dark:bg-pink-950/50 dark:text-pink-400 border border-accent/20"
@@ -1387,6 +1389,8 @@ function GermanGradeTool() {
 
   const handleClearAll = () => {
     setObtained('');
+    setMax('100');
+    setMin('35');
   };
 
   const shareSummary = result

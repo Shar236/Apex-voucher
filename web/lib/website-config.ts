@@ -1,4 +1,5 @@
 import { apiBase } from './api';
+import { getSessionCurrency, currencyDisplayHeaders } from './currency-server';
 import type { Product } from './types';
 import type { ActiveCampaign, BenefitCard, HeroSettings } from '@/components/hero/hero-section';
 
@@ -62,7 +63,13 @@ const FALLBACK: WebsiteConfig = {
  */
 export async function getWebsiteConfig(): Promise<WebsiteConfig> {
   try {
-    const res = await fetch(`${apiBase()}/api/products/website-config`, {
+    // Forward the session display currency (short-lived cookie) so the backend
+    // hydrates product prices in the SAME currency the visitor already saw —
+    // no currency flipping mid-session. Display-only: payments re-detect.
+    const currency = await getSessionCurrency();
+    const qs = currency ? `?currency=${encodeURIComponent(currency)}` : '';
+    const res = await fetch(`${apiBase()}/api/products/website-config${qs}`, {
+      ...(currency ? { headers: currencyDisplayHeaders(currency) } : {}),
       next: { revalidate: 300 },
       signal: AbortSignal.timeout(3500),
     });

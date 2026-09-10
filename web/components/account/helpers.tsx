@@ -182,7 +182,7 @@ export function OrderRow({ o, detailed = false }: { o: AccountOrder; detailed?: 
         </div>
       </div>
       <div className="text-right">
-        <div className="font-heading font-black text-lg text-neutral-900 dark:text-white tabular-nums">{formatPrice(o.total)}</div>
+        <div className="font-heading font-black text-lg text-neutral-900 dark:text-white tabular-nums">{formatPrice(o.total, (o.currency as 'INR' | 'USD') || 'INR')}</div>
         {detailed && o.promoCode && <div className="text-[10px] font-black text-brand-pink">Promo: {o.promoCode as string}</div>}
       </div>
     </div>

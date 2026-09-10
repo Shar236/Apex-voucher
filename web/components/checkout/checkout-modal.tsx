@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth-provider';
 import { useCart } from '@/components/cart-provider';
 import { useVoucher } from '@/components/voucher-provider';
 import { accountApi, paymentApi, formatPrice as fmt, type ApiResponse } from '@/lib/api';
+import { unitDisplayPrice } from '@/lib/pricing';
 
 const RAZORPAY_SDK_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -66,7 +67,7 @@ export function CheckoutModal() {
   const { isCheckoutOpen, setIsCheckoutOpen, checkoutProduct, checkoutMeta, handlePurchaseSuccess } = useVoucher();
   const voucherRequestId = checkoutMeta?.voucherRequestId || null;
   const { isAuthenticated, user, login, register } = useAuth();
-  const { formatPrice, clearCart } = useCart();
+  const { formatPrice, clearCart, currency } = useCart();
 
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
@@ -114,14 +115,22 @@ export function CheckoutModal() {
 
   if (!isCheckoutOpen || checkoutItems.length === 0) return null;
 
-  const subtotal = checkoutItems.reduce(
+  const subtotal = checkoutItems.reduce((acc, it) => {
+    const p = unitDisplayPrice(it, it.selectedDuration, currency);
+    return acc + p.current * (it.quantity || 1);
+  }, 0);
+
+  const totalOriginal = checkoutItems.reduce((acc, it) => {
+    const p = unitDisplayPrice(it, it.selectedDuration, currency);
+    return acc + p.original * (it.quantity || 1);
+  }, 0);
+  const totalSavings = Math.max(0, totalOriginal - subtotal);
+  const finalPrice = Math.max(0, subtotal - promoDiscount);
+
+  const inrSubtotal = checkoutItems.reduce(
     (s, it) => s + Number(it.selectedDuration?.sellingPrice ?? (it.discountedPrice != null ? it.discountedPrice : (it.sellingPrice || 0))) * (it.quantity || 1),
     0
   );
-
-  const totalOriginal = checkoutItems.reduce((s, it) => s + Number(it.selectedDuration?.originalPrice ?? (it.originalPrice || 0)) * (it.quantity || 1), 0);
-  const totalSavings = Math.max(0, totalOriginal - subtotal);
-  const finalPrice = Math.max(0, subtotal - promoDiscount);
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -132,7 +141,7 @@ export function CheckoutModal() {
     setPromoError('');
     const res = await accountApi.validatePromo({
       code: promoCode,
-      subtotal,
+      subtotal: inrSubtotal,
       productIds: checkoutItems.map((it) => it._id || it.id),
     });
     if (res.success && res.valid) {
@@ -431,20 +440,23 @@ export function CheckoutModal() {
                   </div>
                 </div>
                 <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                  {checkoutItems.map((item, idx) => (
-                    <div key={item.id || item._id || idx} className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-accent">{item.quantity || 1}×</span>
-                        <span className="font-normal text-ink line-clamp-1">
-                          {item.name}
-                          {item.selectedDuration?.label ? <span className="text-[10px] font-bold text-accent"> ({item.selectedDuration.label})</span> : null}
+                  {checkoutItems.map((item, idx) => {
+                    const p = unitDisplayPrice(item, item.selectedDuration, currency);
+                    return (
+                      <div key={item.id || item._id || idx} className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-accent">{item.quantity || 1}×</span>
+                          <span className="font-normal text-ink line-clamp-1">
+                            {item.name}
+                            {item.selectedDuration?.label ? <span className="text-[10px] font-bold text-accent"> ({item.selectedDuration.label})</span> : null}
+                          </span>
+                        </div>
+                        <span className="font-medium text-neutral-900 dark:text-white shrink-0">
+                          {formatPrice(p.current * (item.quantity || 1))}
                         </span>
                       </div>
-                      <span className="font-medium text-neutral-900 dark:text-white shrink-0">
-                        {formatPrice((item.selectedDuration?.sellingPrice ?? (item.discountedPrice != null ? item.discountedPrice : item.sellingPrice || 0)) * (item.quantity || 1))}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {totalSavings > 0 && (
                   <div className="text-[11px] font-normal text-success flex items-center gap-1 pt-1 border-t border-accent/10">
@@ -607,7 +619,7 @@ export function CheckoutModal() {
                 </button>
                 <p className="text-center text-[11px] font-normal text-neutral-400 flex items-center justify-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>256-bit Encrypted SSL Gateway • 100% Genuine Official Vouchers</span>
+                  <span>Secure Payment • 100% Genuine Official Vouchers</span>
                 </p>
               </div>
             </form>

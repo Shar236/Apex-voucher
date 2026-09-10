@@ -1,4 +1,5 @@
 import { siteConfig } from './config';
+import { formatMoney } from './money';
 
 const TOKEN_KEY = 'apex.token';
 const USER_KEY = 'apex.user';
@@ -507,11 +508,13 @@ export const awardApi = {
   },
 };
 
+/**
+ * Currency formatting is centralized in lib/currency.tsx (formatMoney).
+ * This alias keeps existing import sites working. IMPORTANT: the amount must
+ * already be in the given currency — conversion to USD happens ONLY on the
+ * backend from the live USD/INR rate; the browser never converts.
+ */
 export const formatPrice = (amount: number | null | undefined, currency: 'INR' | 'USD' = 'INR'): string => {
-  if (currency === 'USD') {
-    const val = (Number(amount) / 83.5).toFixed(2);
-    return `$${val}`;
-  }
   if (amount == null) return '—';
-  return `₹${Number(amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  return formatMoney(amount, currency);
 };
