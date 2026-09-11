@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest, VoucherRequest, VOUCHER_REQUEST_STATUSES, FulfillmentRequest, ORDER_STATUSES, PAYMENT_STATUSES } from '../models/index.js';
+import { User, Order, Product, VoucherCode, Promotion, AuditLog, Video, Reel, Setting, Campaign, PTEBookingRequest, VoucherRequest, VOUCHER_REQUEST_STATUSES, FulfillmentRequest, PurchaseEvent, ORDER_STATUSES, PAYMENT_STATUSES } from '../models/index.js';
 import { normalizeVoucherType } from '../services/voucherAllocation.js';
 import {
   deleteVouchers,
@@ -1512,12 +1512,11 @@ export const getVoucherCodeUnmasked = async (req, res, next) => {
 
 export const getAdminNotifications = async (req, res, next) => {
   try {
-    // 1. Recently Sold Vouchers (Last 20)
-    const recentlySold = await VoucherCode.find({ status: { $in: ['SOLD', 'ASSIGNED'] } })
-      .populate('productId', 'name brand voucherType')
-      .populate('orderId', 'orderNo total')
-      .populate('userId', 'name email')
-      .sort({ updatedAt: -1, assignedAt: -1, soldAt: -1 })
+    // 1. Recent genuine purchases (payment-verified). Sourced from PurchaseEvent
+    //    so the card is code-free and consistent with the public social-proof
+    //    feed — the voucher code is NEVER surfaced in this notification area.
+    const recentPurchases = await PurchaseEvent.find({})
+      .sort({ createdAt: -1 })
       .limit(15)
       .lean();
 
@@ -1649,21 +1648,21 @@ export const getAdminNotifications = async (req, res, next) => {
           status: r.status,
         },
       })),
-      ...recentlySold.map((v) => ({
-        id: v._id,
-        type: 'VOUCHER_SOLD',
+      ...recentPurchases.map((p) => ({
+        id: `pe_${p._id}`,
+        type: 'PURCHASE',
         severity: 'success',
-        title: '🔔 Voucher Sold',
-        message: `${v.productId?.name || 'Voucher'} (${v.voucherType || 'EXAM'}) sold for Order #${v.orderId?.orderNo || 'Direct'}`,
-        timestamp: v.soldAt || v.assignedAt || v.updatedAt,
+        title: '🎉 New Purchase',
+        message: `${p.productName}${p.quantity > 1 ? ` ×${p.quantity}` : ''} — Order #${p.orderNo}. Payment successful. Voucher ${p.voucherIssued ? 'issued' : 'processing'}.`,
+        tab: 'orders',
+        timestamp: p.createdAt,
         data: {
-          codeMasked: `${v.code.slice(0, 4)}-****-${v.code.slice(-4)}`,
-          productName: v.productId?.name,
-          voucherType: v.voucherType,
-          orderNo: v.orderId?.orderNo,
-          customerEmail: v.soldTo || v.userId?.email || 'Customer',
-          soldAt: v.soldAt || v.assignedAt || v.updatedAt,
-          status: v.status,
+          productName: p.productName,
+          voucherType: p.voucherType,
+          orderNo: p.orderNo,
+          paymentStatus: 'Successful',
+          voucherStatus: p.voucherIssued ? 'Issued' : 'Processing',
+          quantity: p.quantity,
         },
       })),
     ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -1674,7 +1673,7 @@ export const getAdminNotifications = async (req, res, next) => {
       counts: {
         total: notifications.length,
         critical: notifications.filter((n) => n.severity === 'critical' || n.severity === 'error').length,
-        sales: recentlySold.length,
+        sales: recentPurchases.length,
         stockAlerts: stockAlerts.length,
         voucherRequests: openVoucherRequests.length,
         pendingFulfillments: pendingFulfillments.length,

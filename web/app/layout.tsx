@@ -4,6 +4,7 @@ import { ThemeProvider, THEME_INIT_SCRIPT } from '@/components/theme-provider';
 import { CurrencyProvider } from '@/lib/currency';
 import { getSessionCurrency } from '@/lib/currency-server';
 import { Toaster } from '@/components/ui/toast';
+import { SocialProofToaster } from '@/components/social-proof/social-proof-toast';
 import { AuthProvider } from '@/components/auth-provider';
 import { CartProvider } from '@/components/cart-provider';
 import { VoucherProvider } from '@/components/voucher-provider';
@@ -92,6 +93,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <CartDrawer />
                   <CheckoutModal />
                   <Toaster />
+                  <SocialProofToaster />
                 </VoucherProvider>
               </CartProvider>
             </AuthProvider>

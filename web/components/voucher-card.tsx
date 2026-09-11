@@ -7,7 +7,7 @@ import { useCart } from '@/components/cart-provider';
 import { useVoucher } from '@/components/voucher-provider';
 import { Button, StockBadge, PriceDisplay, DiscountBadge, ProviderLogo } from '@/components/ui';
 import type { Product, DurationOption } from '@/lib/types';
-import { unitDisplayPrice } from '@/lib/pricing';
+import { unitDisplayPrice, calculateDiscountPercent } from '@/lib/pricing';
 
 /** The single voucher card used on every product surface (grids, best-sellers, related rows). */
 export function VoucherCard({ product }: { product: Product }) {
@@ -23,24 +23,35 @@ export function VoucherCard({ product }: { product: Product }) {
     enabledDurations.length > 0 ? enabledDurations[0] : null
   );
 
+  const activeSelectedDuration =
+    selectedDuration && enabledDurations.some((o) => o.key === selectedDuration.key)
+      ? selectedDuration
+      : (enabledDurations.length > 0 ? enabledDurations[0] : null);
+
   // Derive price from the selected duration, otherwise from the product base.
-  const priced = unitDisplayPrice(product, selectedDuration, currency);
+  const priced = unitDisplayPrice(product, activeSelectedDuration, currency);
   const current = priced.current;
   const original = priced.original;
-  const discountPercent = original > current ? Math.round(((original - current) / original) * 100) : 0;
+  const discountPercent = calculateDiscountPercent(original, current);
   const savings = Math.max(0, original - current);
 
   // Build a product-with-duration to pass to cart/checkout.
   const productWithDuration = useMemo(
-    () => (selectedDuration ? { ...product, selectedDuration } : product),
-    [product, selectedDuration]
+    () => (activeSelectedDuration ? {
+      ...product,
+      selectedDuration: activeSelectedDuration,
+      sellingPrice: activeSelectedDuration.sellingPrice || product.sellingPrice,
+      originalPrice: activeSelectedDuration.originalPrice || product.originalPrice || activeSelectedDuration.sellingPrice,
+      discountedPrice: activeSelectedDuration.sellingPrice || product.discountedPrice || product.sellingPrice,
+    } : product),
+    [product, activeSelectedDuration]
   );
 
   // Validity label derived from the selected duration (the shared bar prefers validityMonths/validity).
-  const durationValidity = selectedDuration
-    ? selectedDuration.validityDays >= 30 && selectedDuration.validityDays % 30 === 0
-      ? `Valid ${selectedDuration.validityDays / 30} Month${selectedDuration.validityDays / 30 === 1 ? '' : 's'}`
-      : `Valid ${selectedDuration.validityDays} Days`
+  const durationValidity = activeSelectedDuration
+    ? activeSelectedDuration.validityDays >= 30 && activeSelectedDuration.validityDays % 30 === 0
+      ? `Valid ${activeSelectedDuration.validityDays / 30} Month${activeSelectedDuration.validityDays / 30 === 1 ? '' : 's'}`
+      : `Valid ${activeSelectedDuration.validityDays} Days`
     : null;
 
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
@@ -88,7 +99,7 @@ export function VoucherCard({ product }: { product: Product }) {
         <div className="px-4 pt-3">
           <div className="flex items-center gap-1 rounded-xl bg-neutral-100 dark:bg-[#262626] p-1">
             {enabledDurations.map((opt) => {
-              const isActive = selectedDuration?.key === opt.key;
+              const isActive = activeSelectedDuration?.key === opt.key;
               return (
                 <button
                   key={opt.key}

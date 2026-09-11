@@ -30,6 +30,7 @@ import awardRoutes from './routes/awardRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import publicBlogRoutes from './routes/publicBlogRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
+import socialProofRoutes from './routes/socialProofRoutes.js';
 
 const app = express();
 
@@ -207,6 +208,7 @@ app.use('/api/admin/blogs', blogRoutes);
 app.use('/api/blog', publicBlogRoutes);
 app.use('/api/admin/fulfillments', fulfillmentRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/social-proof', socialProofRoutes);
 
 
 app.use('/api/*', (req, res) => {

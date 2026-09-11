@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Heart, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { Heart, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react';
 import { ApexLogo } from '@/components/apex-logo';
 import { CALCULATORS } from '@/lib/calculators';
 
 interface FooterProps {
-  description?: string;
   phone?: string;
   email?: string;
   copyright?: string;
@@ -88,7 +87,6 @@ const Badge = ({ children }: { children: ReactNode }) => (
 );
 
 export function Footer({
-  description = 'Official platform for discounted English language exam vouchers (PTE, IELTS, TOEFL, Duolingo). Test smarter, save more.',
   phone = '+91 9855926113',
   email = 'info@apexvouchers.com',
   copyright = '© 2026 Apex Vouchers. All rights reserved.',
@@ -119,14 +117,26 @@ export function Footer({
               aria-label="Apex Vouchers home"
               className="inline-block"
             >
-              <ApexLogo showTagline />
+              <ApexLogo />
             </Link>
 
-            <p className="text-xs font-normal leading-relaxed text-neutral-500">
-              {description}
-            </p>
-
             <div className="space-y-1.5 pt-1 text-[11px]">
+              <div className="flex items-start gap-1.5 text-neutral-600">
+                <MapPin
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 shrink-0 text-accent mt-0.5"
+                />
+                <a
+                  href="https://www.google.com/maps/place/APEX+INSTITUTE+IELTS,+PTE,+AND+OET/@30.675596,75.2884119,17z/data=!3m1!4b1!4m6!3m5!1s0x3910a34f04c55d99:0x2fae665204ba95fb!8m2!3d30.675596!4d75.2884119!16s%2Fg%2F11q943f75z?entry=ttu&g_ep=EgoyMDI2MDkwNi4wIKXMDSoASAFQAw%3D%3D"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="leading-snug transition-colors hover:text-accent"
+                  aria-label="View Apex Institute on Google Maps"
+                >
+                  near ROSHAN LAL SHOWROOM, Badhni Kalan, Punjab 142037
+                </a>
+              </div>
+
               <div className="flex items-center gap-1.5 text-neutral-600">
                 <Phone
                   aria-hidden="true"

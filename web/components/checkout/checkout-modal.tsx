@@ -127,10 +127,10 @@ export function CheckoutModal() {
   const totalSavings = Math.max(0, totalOriginal - subtotal);
   const finalPrice = Math.max(0, subtotal - promoDiscount);
 
-  const inrSubtotal = checkoutItems.reduce(
-    (s, it) => s + Number(it.selectedDuration?.sellingPrice ?? (it.discountedPrice != null ? it.discountedPrice : (it.sellingPrice || 0))) * (it.quantity || 1),
-    0
-  );
+  const inrSubtotal = checkoutItems.reduce((s, it) => {
+    const p = unitDisplayPrice(it, it.selectedDuration, 'INR');
+    return s + p.current * (it.quantity || 1);
+  }, 0);
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -255,11 +255,18 @@ export function CheckoutModal() {
     paymentHandledRef.current = false;
 
     const orderPayload = {
-      items: checkoutItems.map((it) => ({
-        productId: it._id || it.id,
-        quantity: it.quantity || 1,
-        ...(it.selectedDuration?.key ? { durationKey: it.selectedDuration.key } : {}),
-      })),
+      items: checkoutItems.map((it) => {
+        const effectiveDuration =
+          it.selectedDuration ||
+          (Array.isArray(it.durationOptions)
+            ? it.durationOptions.find((o) => o && o.enabled !== false && Number(o.sellingPrice ?? o.displaySellingPrice) > 0)
+            : null);
+        return {
+          productId: it._id || it.id,
+          quantity: it.quantity || 1,
+          ...(effectiveDuration?.key ? { durationKey: effectiveDuration.key } : {}),
+        };
+      }),
       promoCode: promoApplied ? promoCode.trim().toUpperCase() : null,
       paymentMethod,
       billing: { ...formData, email: formData.email || user?.email },

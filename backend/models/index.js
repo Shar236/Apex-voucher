@@ -2,6 +2,7 @@ export { User } from './User.js';
 export { Product } from './Product.js';
 export { VoucherCode } from './VoucherCode.js';
 export { Order, ORDER_STATUSES, PAYMENT_STATUSES } from './Order.js';
+export { PurchaseEvent } from './PurchaseEvent.js';
 export { Promotion } from './Promotion.js';
 export { AuditLog } from './AuditLog.js';
 export { Video, Reel } from './Video.js';

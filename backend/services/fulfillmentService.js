@@ -2,6 +2,7 @@ import { FulfillmentRequest, Order, VoucherCode, Product, AuditLog } from '../mo
 import { AppError } from '../middleware/errorHandler.js';
 import { generateFulfillmentRequestId, escapeRegex } from '../utils/index.js';
 import { normalizeVoucherType } from './voucherAllocation.js';
+import { markPurchaseEventIssued } from './purchaseProof.js';
 import {
   sendOrderConfirmation,
   sendAdminFulfillmentRequestNotification,
@@ -269,6 +270,10 @@ export const deliverFulfillmentRequest = async ({ requestId, code, admin }) => {
       voucherId: voucher._id.toString(),
     },
   }).catch(() => {});
+
+  // Flip the (already-broadcast) social-proof event to "voucher issued" so the
+  // admin card reads correctly. Never re-broadcasts publicly. Best-effort.
+  await markPurchaseEventIssued({ order, user: { name: request.customerName } });
 
   return { request, order, alreadyDelivered: false, voucher };
 };

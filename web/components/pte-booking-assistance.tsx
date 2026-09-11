@@ -83,7 +83,9 @@ export function PTEBookingAssistance({ products }: { products: Product[] }) {
                       </div>
                     ) : (
                       <div>
-                        <div className="font-heading font-bold text-xl text-neutral-900 dark:text-white mb-0.5">Special Rate on Inquiry</div>
+                        <div className="flex items-center justify-between gap-2 flex-wrap mb-0.5">
+                          <span className="font-heading font-bold text-2xl text-neutral-900 dark:text-white tracking-tight">₹14,499</span>
+                        </div>
                         <div className="text-xs text-neutral-500 dark:text-neutral-400">Assisted slot reservation service</div>
                       </div>
                     )}
@@ -100,7 +102,7 @@ export function PTEBookingAssistance({ products }: { products: Product[] }) {
                 </div>
 
                 <Link href={`/exam-booking?exam=${card.slug}`} aria-label={`Book ${card.examType} Exam`} className="w-full py-3 px-4 rounded-xl bg-[#FF005C] hover:bg-[#E00052] text-white font-medium text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99] mt-auto">
-                  <span>{pricing.bookingPrice != null ? 'Book My PTE Exam' : 'Inquire for Booking'}</span>
+                  <span>Book Now</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

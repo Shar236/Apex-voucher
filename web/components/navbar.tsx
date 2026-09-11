@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Menu, X, BookOpen, HelpCircle, CalendarCheck, Trophy, Calculator, Info, MessageCircle } from 'lucide-react';
+import { Phone, Mail, ShoppingCart, User, ChevronDown, Ticket, Menu, X, BookOpen, CalendarCheck, Trophy, Calculator } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useCart } from '@/components/cart-provider';
 import { ApexLogo } from '@/components/apex-logo';
@@ -131,9 +131,6 @@ export function Navbar({
                 Home
               </Link>
 
-              <Link href="/about" className={navLinkClass(pathname === '/about')}>
-                About
-              </Link>
 
               <div className="relative" onMouseEnter={() => setVouchersDropdownOpen(true)} onMouseLeave={() => setVouchersDropdownOpen(false)}>
                 <Link href="/exam-vouchers" className={`flex items-center gap-1 px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${isShopActive ? 'text-accent font-medium bg-accent/8' : 'hover:bg-accent/6 hover:text-accent'}`}>
@@ -181,13 +178,6 @@ export function Navbar({
                 Awards
               </Link>
 
-              <Link href="/faq" className={navLinkClass(pathname === '/faq')}>
-                FAQ
-              </Link>
-
-              <Link href="/contact" className={navLinkClass(pathname === '/contact')}>
-                Contact
-              </Link>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
@@ -262,25 +252,13 @@ export function Navbar({
               <span>Students Diary & Blog</span>
             </Link>
 
-            <Link href="/about" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
-              <Info className="w-4 h-4 text-accent" />
-              <span>About Apex Vouchers</span>
-            </Link>
 
             <Link href="/awards" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
               <Trophy className="w-4 h-4 text-accent" />
               <span>Awards & Achievements</span>
             </Link>
 
-            <Link href="/faq" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-ink-muted" />
-              <span>FAQ & Help</span>
-            </Link>
 
-            <Link href="/contact" onClick={() => setIsMenuOpen(false)} className="w-full text-left px-4 py-2.5 rounded-xl font-normal text-ink-muted hover:bg-surface-raised hover:text-ink flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-accent" />
-              <span>Contact Support</span>
-            </Link>
 
             <div className="pt-2 flex flex-col gap-2">
               <Button as={Link} href="/exam-booking" variant="secondary" size="md" fullWidth onClick={() => setIsMenuOpen(false)}>

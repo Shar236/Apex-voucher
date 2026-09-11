@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { ThemedBrandLogo } from '@/components/ui/themed-brand-logo';
-import { SectionHeading, Badge, Button } from '@/components/ui';
+import { SectionHeading, Badge, Button, ProviderLogo } from '@/components/ui';
 import { formatPrice } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import { unitDisplayPrice } from '@/lib/pricing';
@@ -54,8 +54,12 @@ export function ExamCategorySection({ products }: { products: Product[] }) {
                   <span className="text-[11px] font-normal text-ink-muted">{cat.validity}</span>
                 </div>
 
-                <div className="rounded-xl mb-4 h-20 flex items-center justify-center bg-surface-raised border border-line">
-                  <ThemedBrandLogo brand={cat.searchKey} name={cat.fullName} className="h-9" />
+                <div className="rounded-xl mb-4 flex h-20 items-center justify-center border border-line bg-surface-raised px-3 py-2">
+                  {target ? (
+                    <ProviderLogo product={target} size="md" />
+                  ) : (
+                    <ThemedBrandLogo brand={cat.searchKey} name={cat.fullName} className="h-9" />
+                  )}
                 </div>
 
                 <h3 className="font-heading font-normal text-lg leading-snug text-ink">{cat.name}</h3>

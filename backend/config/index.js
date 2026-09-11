@@ -106,6 +106,20 @@ export const config = {
       : 'https://ipapi.co/{ip}/country/',
   },
 
+  // ── Public "recent purchase" social-proof notifications ───────────────────
+  // A small toast broadcast (over SSE) to every connected visitor whenever a
+  // GENUINE Razorpay payment is verified and the order is legitimately paid.
+  // The public payload never carries a voucher code, email, phone, full name,
+  // payment id or amount — see services/purchaseProof.js.
+  socialProof: {
+    // Master switch. Set SOCIAL_PROOF_ENABLED=false to disable recording + broadcast.
+    enabled: process.env.SOCIAL_PROOF_ENABLED !== 'false',
+    // Show a sanitised FIRST name ("Rahul has successfully purchased …") when a
+    // safe one is available. On by default; set SOCIAL_PROOF_SHOW_FIRST_NAME=false
+    // to always use the neutral "A customer …" wording.
+    showFirstName: process.env.SOCIAL_PROOF_SHOW_FIRST_NAME !== 'false',
+  },
+
   fx: {
     // USD→INR provider. Default is the free Open Exchange Rates-compatible
     // endpoint (no key required) — do NOT set FX_API_KEY unless your provider

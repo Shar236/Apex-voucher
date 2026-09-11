@@ -87,7 +87,19 @@ const applyAvailability = async (products, req = null) => {
   }
   return products.map((p) => {
     const raw = typeof p.toObject === 'function' ? p.toObject() : p;
-    const savings = Math.max(0, (raw.originalPrice || 0) - (raw.sellingPrice || 0));
+    const activeDurations = Array.isArray(raw.durationOptions)
+      ? raw.durationOptions.filter((o) => o && o.enabled !== false && Number(o.sellingPrice) > 0)
+      : [];
+    const firstDuration = activeDurations.length > 0 ? activeDurations[0] : null;
+    const effectiveSellingPrice =
+      Number(raw.sellingPrice) > 0
+        ? Number(raw.sellingPrice)
+        : (firstDuration ? Number(firstDuration.sellingPrice) : 0);
+    const effectiveOriginalPrice =
+      Number(raw.originalPrice) > 0
+        ? Number(raw.originalPrice)
+        : (firstDuration ? Number(firstDuration.originalPrice || firstDuration.sellingPrice) : effectiveSellingPrice);
+    const savings = Math.max(0, effectiveOriginalPrice - effectiveSellingPrice);
     const isComingSoon = !!raw.comingSoon;
 
     // Deliver each guide-step screenshot through the same Cloudinary
@@ -123,14 +135,16 @@ const applyAvailability = async (products, req = null) => {
       availableStock: null,
       inStock: !isComingSoon,
       stockStatus: isComingSoon ? 'COMING SOON' : 'IN STOCK',
-      discountedPrice: raw.sellingPrice,
+      sellingPrice: effectiveSellingPrice,
+      originalPrice: effectiveOriginalPrice,
+      discountedPrice: effectiveSellingPrice,
       savings,
       // ── Display pricing (INR is the base; USD derived server-side) ────────
       // `pricing.currency` is the display/billing currency for this visitor.
       // The frontend formats `displayPrice` — it NEVER converts currencies.
       ...(resolvePricing
         ? {
-            pricing: resolvePricing(raw.sellingPrice, raw.originalPrice),
+            pricing: resolvePricing(effectiveSellingPrice, effectiveOriginalPrice),
             // Duration variants get display prices too (USD), keeping every
             // surface consistent for international visitors.
             durationOptions: Array.isArray(raw.durationOptions)
@@ -142,8 +156,20 @@ const applyAvailability = async (products, req = null) => {
                     displaySellingPrice: priced.displayPrice,
                     displayOriginalPrice: priced.displayOriginalPrice,
                     displayCurrency: priced.currency,
-                    inr: priced.inr,
-                    usd: priced.usd,
+                    inr: {
+                      ...priced.inr,
+                      displayPrice: priced.inr?.displayPrice ?? o.sellingPrice,
+                      displaySellingPrice: priced.inr?.displaySellingPrice ?? priced.inr?.displayPrice ?? o.sellingPrice,
+                      displayOriginalPrice: priced.inr?.displayOriginalPrice ?? o.originalPrice ?? o.sellingPrice,
+                    },
+                    usd: priced.usd
+                      ? {
+                          ...priced.usd,
+                          displayPrice: priced.usd.displayPrice,
+                          displaySellingPrice: priced.usd.displaySellingPrice ?? priced.usd.displayPrice,
+                          displayOriginalPrice: priced.usd.displayOriginalPrice ?? priced.usd.displayPrice,
+                        }
+                      : null,
                   };
                 })
               : raw.durationOptions,

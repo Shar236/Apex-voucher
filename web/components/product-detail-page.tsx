@@ -15,7 +15,7 @@ import { getRedemptionGuide } from '@/lib/redemption-guides';
 import { formatPrice } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import type { Product, DurationOption } from '@/lib/types';
-import { unitDisplayPrice } from '@/lib/pricing';
+import { unitDisplayPrice, calculateDiscountPercent } from '@/lib/pricing';
 
 const DEFAULT_INCLUSIONS = ['Genuine Digital Voucher', 'Fast Delivery to Email', 'Clear Redemption Instructions', 'Official Provider Redemption', 'Customer Support', 'Transparent Pricing'];
 
@@ -27,14 +27,19 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
   );
   const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(enabledDurations.length > 0 ? enabledDurations[0] : null);
 
-  const priced = unitDisplayPrice(product, selectedDuration, currency);
+  const activeSelectedDuration =
+    selectedDuration && enabledDurations.some((o) => o.key === selectedDuration.key)
+      ? selectedDuration
+      : (enabledDurations.length > 0 ? enabledDurations[0] : null);
+
+  const priced = unitDisplayPrice(product, activeSelectedDuration, currency);
   const currentPrice = priced.current;
   const originalPrice = priced.original;
   const priceCurrency = priced.currency;
-  const displayValidity = selectedDuration
-    ? selectedDuration.validityDays >= 30 && selectedDuration.validityDays % 30 === 0
-      ? `Valid ${selectedDuration.validityDays / 30} Month${selectedDuration.validityDays / 30 === 1 ? '' : 's'}`
-      : `Valid ${selectedDuration.validityDays} Days`
+  const displayValidity = activeSelectedDuration
+    ? activeSelectedDuration.validityDays >= 30 && activeSelectedDuration.validityDays % 30 === 0
+      ? `Valid ${activeSelectedDuration.validityDays / 30} Month${activeSelectedDuration.validityDays / 30 === 1 ? '' : 's'}`
+      : `Valid ${activeSelectedDuration.validityDays} Days`
     : null;
 
   const inclusions = Array.isArray(product.inclusions) && product.inclusions.length > 0 ? product.inclusions : DEFAULT_INCLUSIONS;
@@ -100,7 +105,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
                   <span className="text-xs font-medium uppercase tracking-widest text-ink-muted">Choose your access period:</span>
                   <div className="flex items-center gap-1 rounded-xl bg-neutral-100 dark:bg-[#262626] p-1">
                     {enabledDurations.map((opt) => {
-                      const isActive = selectedDuration?.key === opt.key;
+                      const isActive = activeSelectedDuration?.key === opt.key;
                       return (
                         <button
                           key={opt.key}
@@ -119,7 +124,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
 
               <div className="flex items-end gap-4">
                 <PriceDisplay original={originalPrice} current={currentPrice} formatPrice={(n) => formatPrice(n, priceCurrency)} size="lg" emphasis="accent" showSaved />
-                <DiscountBadge percent={originalPrice > currentPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0} savings={Math.max(0, originalPrice - currentPrice)} formatPrice={(n) => formatPrice(n, priceCurrency)} />
+                <DiscountBadge percent={calculateDiscountPercent(originalPrice, currentPrice)} savings={Math.max(0, originalPrice - currentPrice)} formatPrice={(n) => formatPrice(n, priceCurrency)} />
                 <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider pb-1.5 whitespace-nowrap">
                   {priceCurrency === 'USD' ? 'USD $' : 'INR ₹'}
                 </span>
@@ -127,7 +132,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
 
               <DeliveryValidityBar product={displayValidity ? { ...product, validity: displayValidity } : product} className="max-w-xs" />
 
-              <BuyActions product={product} selectedDuration={selectedDuration} />
+              <BuyActions product={product} selectedDuration={activeSelectedDuration} />
 
               {(product as { officialWebsiteUrl?: string; officialProductUrl?: string }).officialWebsiteUrl && (
                 <a href={(product as { officialWebsiteUrl?: string }).officialWebsiteUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-accent transition-colors">
@@ -271,7 +276,7 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
         All trademarks and logos belong to their respective owners. Apex Vouchers is an independent voucher/service provider unless otherwise stated.
       </p>
 
-      <StickyMobileBar product={product} selectedDuration={selectedDuration} />
+      <StickyMobileBar product={product} selectedDuration={activeSelectedDuration} />
     </>
   );
 }

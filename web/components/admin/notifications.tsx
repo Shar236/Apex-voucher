@@ -17,6 +17,9 @@ export interface AdminNotification {
     codeMasked?: string;
     voucherType?: string;
     customerEmail?: string;
+    orderNo?: string;
+    paymentStatus?: string;
+    voucherStatus?: string;
     [key: string]: unknown;
   };
 }
@@ -45,6 +48,7 @@ const TAB_FOR_TYPE: Record<string, string> = {
   VOUCHER_REQUEST: 'voucher-requests',
   OUT_OF_STOCK: 'vouchers',
   LOW_STOCK: 'vouchers',
+  PURCHASE: 'orders',
   VOUCHER_SOLD: 'orders',
   MISMATCH_BLOCKED: 'orders',
   ALLOCATION_FAILED: 'orders',
@@ -206,10 +210,28 @@ export function NotificationsDrawer({
                         <span className="font-black text-brand-pink">{n.data.codeMasked}</span>
                       </div>
                     )}
+                    {n.data.orderNo && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Order:</span>
+                        <span className="font-black text-neutral-700 dark:text-neutral-300">#{n.data.orderNo}</span>
+                      </div>
+                    )}
                     {n.data.voucherType && (
                       <div className="flex justify-between">
                         <span className="text-neutral-400">Voucher Type:</span>
                         <span className="font-black text-[#6C3CE0]">{n.data.voucherType}</span>
+                      </div>
+                    )}
+                    {n.data.paymentStatus && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Payment:</span>
+                        <span className="font-black text-emerald-600 dark:text-emerald-400">{n.data.paymentStatus}</span>
+                      </div>
+                    )}
+                    {n.data.voucherStatus && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Voucher:</span>
+                        <span className="font-black text-neutral-700 dark:text-neutral-300">{n.data.voucherStatus}</span>
                       </div>
                     )}
                     {n.data.customerEmail && (

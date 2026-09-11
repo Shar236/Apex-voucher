@@ -36,7 +36,7 @@ export function ExamGuidesSection({ posts }: { posts: BlogPost[] }) {
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-[#0B0D12]">No image</div>
                   )}
-                  <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-[#0B0D12] via-[#0B0D12]/40 to-transparent" />
+                  {/* <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-[#0B0D12] via-[#0B0D12]/40 to-transparent" /> */}
                   <span className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-accent text-white text-[11px] font-medium uppercase tracking-wider shadow-md">{featured.category}</span>
                 </div>
                 <div className="flex flex-col justify-center p-6 sm:p-10 space-y-3.5 bg-[#0B0D12] text-white">

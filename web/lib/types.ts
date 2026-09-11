@@ -92,8 +92,8 @@ export interface DurationOption {
   displaySellingPrice?: number;
   displayOriginalPrice?: number;
   displayCurrency?: 'INR' | 'USD';
-  inr?: { displaySellingPrice: number; displayOriginalPrice: number };
-  usd?: { displaySellingPrice: number; displayOriginalPrice: number } | null;
+  inr?: { displayPrice?: number; displaySellingPrice?: number; displayOriginalPrice?: number };
+  usd?: { displayPrice?: number; displaySellingPrice?: number; displayOriginalPrice?: number } | null;
 }
 
 /** The hydrated product shape returned by the backend (backend/controllers/productController.js applyAvailability). */

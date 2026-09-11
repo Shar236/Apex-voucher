@@ -40,7 +40,7 @@ interface WebsiteSettings {
 
 const DEFAULT_HERO = { headingLine1: 'Your Exam. Your Dream.', headingHighlight: 'Our Vouchers.', headingLine3: 'Your Savings.', descriptionText: 'Get official voucher codes for PTE, IELTS, TOEFL & Duolingo at the best prices and save more on your exam fees.', ctaText: 'Browse Vouchers', ctaLink: '/#vouchers' };
 const DEFAULT_ANNOUNCEMENT = { enabled: true, text: '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers', link: '/#vouchers', overrideWithCampaign: true };
-const DEFAULT_FOOTER = { description: 'Apex Vouchers helps candidates save on official exam voucher fees for PTE, IELTS, TOEFL and Duolingo with 100% genuine guaranteed vouchers.', phone: '+91 9855926113', email: 'info@apexvouchers.com', copyright: '© 2026 Apex Vouchers. All rights reserved.' };
+const DEFAULT_FOOTER = { address: 'near ROSHAN LAL SHOWROOM, Badhni Kalan, Punjab 142037', phone: '+91 9855926113', email: 'info@apexvouchers.com', copyright: '© 2026 Apex Vouchers. All rights reserved.' };
 const DEFAULT_POLICY = {
   apexRefund: {
     enabled: true, effectiveDate: '2026-01-01', eligibilityCriteria: 'Vouchers that are 100% unredeemed and unallocated on the Pearson / ETS portal within the allowable refund window.',
@@ -745,11 +745,11 @@ export function WebsiteCMSAdmin() {
         <div className="bg-white dark:bg-[#121212] p-6 rounded-3xl border border-[#EAEAEA] dark:border-[#222] space-y-6">
           <div>
             <h3 className="font-heading font-black text-lg text-slate-900 dark:text-white">Footer Content Management</h3>
-            <p className="text-xs text-neutral-500 font-medium">Update footer description, support phone, support email, and copyright text.</p>
+            <p className="text-xs text-neutral-500 font-medium">Update footer address, support phone, support email, and copyright text.</p>
           </div>
           <div>
-            <label className={labelCls}>Footer Brand Description</label>
-            <textarea rows={3} value={footerForm.description} onChange={(e) => setFooterForm({ ...footerForm, description: e.target.value })} className={areaCls} />
+            <label className={labelCls}>Physical Address</label>
+            <input type="text" value={footerForm.address ?? ''} onChange={(e) => setFooterForm({ ...footerForm, address: e.target.value })} className={inputCls} placeholder="near ROSHAN LAL SHOWROOM, Badhni Kalan, Punjab 142037" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

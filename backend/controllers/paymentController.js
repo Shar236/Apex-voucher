@@ -18,6 +18,7 @@ import {
 import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
 import { markVoucherRequestFulfilled } from '../services/voucherRequestService.js';
 import { createFulfillmentRequestForOrder } from '../services/fulfillmentService.js';
+import { emitPurchaseProof } from '../services/purchaseProof.js';
 import { config } from '../config/index.js';
 import { isValidObjectId } from '../config/db.js';
 import { getCustomerCountry, getDisplayCurrency, isIndia } from '../services/geo.js';
@@ -95,6 +96,13 @@ const getProductsWithPrices = async (lineItems) => {
       if (!opt) {
         throw new AppError('The selected duration is not available for this product', 400, 'DURATION_UNAVAILABLE');
       }
+      unitPrice = Number(opt.sellingPrice);
+      originalPrice = Number(opt.originalPrice) || Number(product.originalPrice) || unitPrice;
+      validityDays = Number(opt.validityDays) || Number(product.validityDays) || 7;
+      durationKey = String(opt.key).toLowerCase();
+      durationLabel = opt.label || '';
+    } else if (enabledDurations.length > 0 && (!Number.isFinite(unitPrice) || unitPrice <= 0)) {
+      const opt = enabledDurations[0];
       unitPrice = Number(opt.sellingPrice);
       originalPrice = Number(opt.originalPrice) || Number(product.originalPrice) || unitPrice;
       validityDays = Number(opt.validityDays) || Number(product.validityDays) || 7;
@@ -438,6 +446,11 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
       },
     }).catch(() => {});
 
+    // The payment IS captured and the order IS legitimately paid — the voucher
+    // is simply being sourced manually. Visitors still see a genuine purchase;
+    // the admin card shows "Voucher: Processing" until delivery.
+    await emitPurchaseProof({ order: working, user, voucherIssued: false });
+
     return {
       alreadyFulfilled: false,
       pendingFulfillment: true,
@@ -456,6 +469,10 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
   // Both are best-effort and CANNOT change the PAID / FULFILLED state.
   await notifyAdminSaleOnce(user, working, enriched);
   await deliverOrderEmailSafe(user, working, enriched);
+
+  // Public "recent purchase" social-proof event — genuine, verified sale only.
+  // Best-effort, idempotent, and carries NO voucher code / PII to visitors.
+  await emitPurchaseProof({ order: working, user, voucherIssued: true });
 
   // Close out a "Request Voucher" request if this order was raised to fulfil one.
   // Best-effort — never affects the PAID / FULFILLED state.

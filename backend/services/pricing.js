@@ -114,10 +114,12 @@ export const createDisplayPricingResolver = async (req) => {
       basePriceINR: paise,
       inr: {
         displayPrice: paise,
+        displaySellingPrice: paise,
         displayOriginalPrice: inrOriginal,
       },
       usd: usd ? {
         displayPrice: usd.amount,
+        displaySellingPrice: usd.amount,
         displayOriginalPrice: usdOriginal ? usdOriginal.amount : 0,
       } : null,
     };
@@ -160,10 +162,12 @@ export const buildDisplayPricing = async (basePriceInr, baseOriginalPriceInr, re
     basePriceINR: basePrice,
     inr: {
       displayPrice: basePrice,
+      displaySellingPrice: basePrice,
       displayOriginalPrice: baseOriginal,
     },
     usd: usd ? {
       displayPrice: usd.amount,
+      displaySellingPrice: usd.amount,
       displayOriginalPrice: usdOriginal ? usdOriginal.amount : 0,
     } : null,
   };

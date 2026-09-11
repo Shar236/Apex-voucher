@@ -450,3 +450,21 @@ h1, h2, h3, h4, h5, h6 {
     animation: none !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Social-proof "recent purchase" toast (components/social-proof).
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes apexProofIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes apexProofOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(14px) scale(0.97); }
+}
+.apex-proof-in { animation: apexProofIn 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+.apex-proof-out { animation: apexProofOut 220ms ease-in forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .apex-proof-in, .apex-proof-out { animation: none !important; }
+}

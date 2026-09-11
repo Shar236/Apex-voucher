@@ -14,7 +14,15 @@ export function BuyActions({ product, selectedDuration, size = 'lg' }: { product
   const { addToCart } = useCart();
   const { startCheckout } = useVoucher();
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
-  const productWithDuration = selectedDuration ? { ...product, selectedDuration } : product;
+  const productWithDuration = selectedDuration
+    ? {
+        ...product,
+        selectedDuration,
+        sellingPrice: selectedDuration.sellingPrice || product.sellingPrice,
+        originalPrice: selectedDuration.originalPrice || product.originalPrice || selectedDuration.sellingPrice,
+        discountedPrice: selectedDuration.sellingPrice || product.discountedPrice || product.sellingPrice,
+      }
+    : product;
 
   return (
     <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -44,7 +52,15 @@ export function StickyMobileBar({ product, selectedDuration }: { product: Produc
   if (isComingSoon) return null;
 
   const { current: unitPrice, currency: itemCurrency } = unitDisplayPrice(product, selectedDuration, currency);
-  const productWithDuration = selectedDuration ? { ...product, selectedDuration } : product;
+  const productWithDuration = selectedDuration
+    ? {
+        ...product,
+        selectedDuration,
+        sellingPrice: selectedDuration.sellingPrice || product.sellingPrice,
+        originalPrice: selectedDuration.originalPrice || product.originalPrice || selectedDuration.sellingPrice,
+        discountedPrice: selectedDuration.sellingPrice || product.discountedPrice || product.sellingPrice,
+      }
+    : product;
 
   return (
     <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">
