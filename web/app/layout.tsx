@@ -85,7 +85,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <CartToast />
                   <main className="flex-1">{children}</main>
                   <Footer
-                    description={config.footerSettings.description}
                     phone={config.footerSettings.phone}
                     email={config.footerSettings.email}
                     copyright={config.footerSettings.copyright}

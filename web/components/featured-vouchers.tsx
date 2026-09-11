@@ -24,7 +24,7 @@ export function FeaturedVouchers({ products }: { products: Product[] }) {
   if (pteProducts.length === 0) return null;
 
   return (
-    <section className="py-16 sm:py-24 bg-[#0B0D12] text-white border-b border-white/5 transition-colors duration-300">
+    <section id="vouchers" className="py-16 sm:py-24 bg-[#0B0D12] text-white border-b border-white/5 transition-colors duration-300 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 shadow-sm text-xs font-normal text-neutral-200">

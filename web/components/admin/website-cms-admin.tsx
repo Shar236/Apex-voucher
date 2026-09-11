@@ -38,7 +38,7 @@ interface WebsiteSettings {
   policySettings?: Record<string, unknown>;
 }
 
-const DEFAULT_HERO = { headingLine1: 'Your Exam. Your Dream.', headingHighlight: 'Our Vouchers.', headingLine3: 'Your Savings.', descriptionText: 'Get official voucher codes for PTE, IELTS, TOEFL & Duolingo at the best prices and save more on your exam fees.', ctaText: 'Browse Vouchers', ctaLink: '/#vouchers' };
+const DEFAULT_HERO = { headingLine1: 'Your Exam. Your Dream.', headingHighlight: 'Our Vouchers.', headingLine3: 'Your Savings.', descriptionText: 'Get official voucher codes for PTE, IELTS, TOEFL & Duolingo at the best prices and save more on your exam fees.', ctaText: 'Browse Vouchers', ctaLink: '/exam-vouchers' };
 const DEFAULT_ANNOUNCEMENT = { enabled: true, text: '⚡ Instant Voucher Delivery in 10s • 100% Genuine Official Vouchers', link: '/#vouchers', overrideWithCampaign: true };
 const DEFAULT_FOOTER = { address: 'near ROSHAN LAL SHOWROOM, Badhni Kalan, Punjab 142037', phone: '+91 9855926113', email: 'info@apexvouchers.com', copyright: '© 2026 Apex Vouchers. All rights reserved.' };
 const DEFAULT_POLICY = {

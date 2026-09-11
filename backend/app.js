@@ -186,6 +186,16 @@ app.use(async (req, res, next) => {
   }
 });
 
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'Apex Vouchers API is running',
+    version: '1.0.0',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -222,9 +232,15 @@ export const startServer = async () => {
   emailConfigStatus();   // safe diagnostic — is transactional email able to send?
   await connectDB();
   const port = config.port;
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`[server] Apex Vouchers API listening on http://localhost:${port}`);
-  });
+  if (typeof port === 'string' && (port.startsWith('/') || port.startsWith('\\\\.\\pipe'))) {
+    app.listen(port, () => {
+      console.log(`[server] Apex Vouchers API listening on socket: ${port}`);
+    });
+  } else {
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`[server] Apex Vouchers API listening on port: ${port}`);
+    });
+  }
   await seedAdmin();
   await ensureDefaultPages();
   await ensureVoucherSchemaConsistency();

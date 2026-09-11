@@ -105,9 +105,10 @@ export function HeroSection({
   const mainCtaText = activeCampaign?.ctaText || heroSettings?.ctaText || 'Browse Vouchers';
   // Admin-configurable target — previously saved but never rendered (the CTA
   // always hardcoded /exam-vouchers). Falls back to the catalog page.
+  const rawCtaHref = heroSettings?.ctaLink?.trim();
   const mainCtaHref =
-    heroSettings?.ctaLink && (heroSettings.ctaLink.startsWith('/') || /^https?:\/\//.test(heroSettings.ctaLink))
-      ? heroSettings.ctaLink
+    rawCtaHref && !['/#vouchers', '#vouchers', '/', ''].includes(rawCtaHref) && (rawCtaHref.startsWith('/') || /^https?:\/\//.test(rawCtaHref))
+      ? rawCtaHref
       : '/exam-vouchers';
 
   const displayBenefits =

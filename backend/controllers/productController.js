@@ -393,7 +393,7 @@ export const getWebsiteConfig = async (req, res, next) => {
       headingLine3: 'Your Savings.',
       descriptionText: 'Get official voucher codes for PTE, IELTS, TOEFL & Duolingo at the best prices and save more on your exam fees.',
       ctaText: 'Browse Vouchers',
-      ctaLink: '/#vouchers',
+      ctaLink: '/exam-vouchers',
     };
 
     const announcementSettings = announcementDoc?.value || DEFAULT_ANNOUNCEMENT;

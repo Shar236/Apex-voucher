@@ -5,6 +5,7 @@ import { ApexLogo } from '@/components/apex-logo';
 import { CALCULATORS } from '@/lib/calculators';
 
 interface FooterProps {
+  description?: string;
   phone?: string;
   email?: string;
   copyright?: string;
