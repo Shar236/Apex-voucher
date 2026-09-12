@@ -34,13 +34,19 @@ export interface ReelInput {
 }
 
 export type ReelMedia =
-  | { kind: 'cloudinary'; src: string }
+  | { kind: 'cloudinary'; src: string; fallbackSrc?: string }
   | { kind: 'file'; src: string }
   | { kind: 'youtube'; embedSrc: string; watchUrl: string }
   | { kind: 'instagram'; url: string }
   | { kind: 'none' };
 
-const CLOUD = siteConfig.cloudinaryCloudName;
+const sanitizeCloud = (name = ''): string => {
+  const clean = name.trim().replace(/^['"]|['"]$/g, '');
+  if (clean === 'nbcbpuqlm') return 'nbcbpuql';
+  return clean || 'nbcbpuql';
+};
+
+const CLOUD = sanitizeCloud(siteConfig.cloudinaryCloudName);
 
 export const isYouTubeUrl = (url = '') => /(?:youtube\.com|youtu\.be)/i.test(url);
 export const isInstagramUrl = (url = '') => /(?:instagram\.com|instagr\.am)/i.test(url);
@@ -54,16 +60,23 @@ const isDirectVideoFileUrl = (url = '') => {
   return /\.(mp4|webm|ogg|mov|m3u8)(\?.*)?$/i.test(url) || /res\.cloudinary\.com\//i.test(url);
 };
 
+export const extractCloudNameFromUrl = (url = ''): string => {
+  const m = url.match(/res\.cloudinary\.com\/([^/]+)\//i);
+  return m ? sanitizeCloud(m[1]) : '';
+};
+
 /** Bare public id (e.g. "v3" or "apex_reels/abc") → full Cloudinary MP4 delivery URL. */
-export const buildCloudinaryVideoUrl = (publicId: string) => {
+export const buildCloudinaryVideoUrl = (publicId: string, cloudName?: string) => {
+  const cloud = sanitizeCloud(cloudName || CLOUD);
   const id = String(publicId).trim().replace(/^\/+/, '').replace(/\.(mp4|webm|mov|ogg)$/i, '');
-  return `https://res.cloudinary.com/${CLOUD}/video/upload/f_auto:video,q_auto/${id}.mp4`;
+  return `https://res.cloudinary.com/${cloud}/video/upload/f_auto:video,q_auto/${id}.mp4`;
 };
 
 /** First-frame poster for a Cloudinary video public id. */
-export const buildCloudinaryVideoPoster = (publicId: string) => {
+export const buildCloudinaryVideoPoster = (publicId: string, cloudName?: string) => {
+  const cloud = sanitizeCloud(cloudName || CLOUD);
   const id = String(publicId).trim().replace(/^\/+/, '').replace(/\.(mp4|webm|mov|ogg)$/i, '');
-  return `https://res.cloudinary.com/${CLOUD}/video/upload/so_0,f_auto,q_auto/${id}.jpg`;
+  return `https://res.cloudinary.com/${cloud}/video/upload/so_0,f_auto,q_auto/${id}.jpg`;
 };
 
 const extractPublicIdFromUrl = (url: string) => {
@@ -94,14 +107,17 @@ const toYouTubeEmbed = (rawUrl = ''): { embedSrc: string; watchUrl: string } | n
 export const resolveReelMedia = (reel: ReelInput): ReelMedia => {
   const publicId = (reel.cloudinaryPublicId || '').trim();
   const videoUrl = (reel.videoUrl || '').trim();
+  const cloudFromUrl = extractCloudNameFromUrl(videoUrl);
+  const cloud = cloudFromUrl || CLOUD;
+  const fallbackSrc = isDirectVideoFileUrl(videoUrl) || isCloudinaryVideoUrl(videoUrl) ? videoUrl : undefined;
 
   // 1 — Cloudinary video (public id, or a cloudinary video URL we can normalise)
   if (publicId && !isYouTubeUrl(publicId) && !isInstagramUrl(publicId)) {
-    return { kind: 'cloudinary', src: buildCloudinaryVideoUrl(publicId) };
+    return { kind: 'cloudinary', src: buildCloudinaryVideoUrl(publicId, cloud), fallbackSrc };
   }
   if (isCloudinaryVideoUrl(videoUrl)) {
     const fromUrl = extractPublicIdFromUrl(videoUrl);
-    return { kind: 'cloudinary', src: fromUrl ? buildCloudinaryVideoUrl(fromUrl) : videoUrl };
+    return { kind: 'cloudinary', src: fromUrl ? buildCloudinaryVideoUrl(fromUrl, cloud) : videoUrl, fallbackSrc };
   }
 
   // 2 — explicit direct video file
@@ -125,11 +141,13 @@ export const resolveReelMedia = (reel: ReelInput): ReelMedia => {
 export const reelPoster = (reel: ReelInput): string => {
   const t = (reel.thumbnailUrl || reel.thumbnail || '').trim();
   if (t) return t;
+  const videoUrl = (reel.videoUrl || '').trim();
+  const cloud = extractCloudNameFromUrl(videoUrl) || CLOUD;
   const publicId = (reel.cloudinaryPublicId || '').trim();
-  if (publicId && !isYouTubeUrl(publicId) && !isInstagramUrl(publicId)) return buildCloudinaryVideoPoster(publicId);
-  if (isCloudinaryVideoUrl(reel.videoUrl || '')) {
-    const id = extractPublicIdFromUrl((reel.videoUrl || '').trim());
-    if (id) return buildCloudinaryVideoPoster(id);
+  if (publicId && !isYouTubeUrl(publicId) && !isInstagramUrl(publicId)) return buildCloudinaryVideoPoster(publicId, cloud);
+  if (isCloudinaryVideoUrl(videoUrl)) {
+    const id = extractPublicIdFromUrl(videoUrl);
+    if (id) return buildCloudinaryVideoPoster(id, cloud);
   }
   return '';
 };

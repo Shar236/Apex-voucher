@@ -68,6 +68,13 @@ function ReelModal({ reel, onClose }: { reel: ReelInput; onClose: () => void }) 
               autoPlay
               playsInline
               controlsList="nodownload"
+              onError={(e) => {
+                const el = e.currentTarget;
+                if (media.kind === 'cloudinary' && media.fallbackSrc && el.src !== media.fallbackSrc) {
+                  el.src = media.fallbackSrc;
+                  el.play().catch(() => {});
+                }
+              }}
               className="w-full h-full object-contain bg-black"
             >
               Your browser does not support embedded video.
@@ -166,15 +173,26 @@ export function ReelsCarousel({ reels }: { reels: ReelInput[] }) {
     const el = videoRef.current;
     if (!el || !isInlineKind) return;
     if (playing) {
-      el.muted = muted;
-      const p = el.play();
-      if (p && typeof p.then === 'function') {
-        p.then(() => activeReel && recordView(activeReel)).catch(() => setPlaying(false));
+      if (el.paused) {
+        el.muted = muted;
+        const p = el.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => activeReel && recordView(activeReel)).catch(() => setPlaying(false));
+        }
       }
     } else {
-      el.pause();
+      if (!el.paused) {
+        el.pause();
+      }
     }
   }, [playing, muted, isInlineKind, activeReel, recordView]);
+
+  // Keep muted attribute strictly synchronized with state
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = muted;
+    }
+  }, [muted]);
 
   // After a programmatic index change that requested autoplay, resume playback.
   useEffect(() => {
@@ -239,7 +257,39 @@ export function ReelsCarousel({ reels }: { reels: ReelInput[] }) {
   const activatePrimary = () => {
     if (!activeReel) return;
     if (isInlineKind) {
-      setPlaying((p) => !p);
+      const el = videoRef.current;
+      if (el) {
+        if (playing) {
+          el.pause();
+          setPlaying(false);
+        } else {
+          el.muted = muted;
+          const p = el.play();
+          if (p && typeof p.then === 'function') {
+            p.then(() => {
+              setPlaying(true);
+              recordView(activeReel);
+            }).catch((err) => {
+              console.warn('[Reels] Direct playback failed, retrying muted:', err);
+              el.muted = true;
+              setMuted(true);
+              el.play()
+                .then(() => {
+                  setPlaying(true);
+                  recordView(activeReel);
+                })
+                .catch((e) => {
+                  console.error('[Reels] Play error:', e);
+                  setPlaying(false);
+                });
+            });
+          } else {
+            setPlaying(true);
+          }
+        }
+      } else {
+        setPlaying((p) => !p);
+      }
     } else if (activeMedia.kind === 'youtube') {
       recordView(activeReel);
       setModalOpen(true);
@@ -342,7 +392,7 @@ export function ReelsCarousel({ reels }: { reels: ReelInput[] }) {
         ))}
 
         {/* CENTER active reel */}
-        <div className={`relative shrink-0 w-[17rem] sm:w-[19rem] lg:w-[21rem] aspect-[9/16] rounded-[1.75rem] overflow-hidden bg-[#12151B] border-2 border-accent shadow-[0_0_45px_-8px_rgba(255,0,92,0.5)] ${motion}`}>
+        <div className={`group relative shrink-0 w-[17rem] sm:w-[19rem] lg:w-[21rem] aspect-[9/16] rounded-[1.75rem] overflow-hidden bg-[#12151B] border-2 border-accent shadow-[0_0_45px_-8px_rgba(255,0,92,0.5)] ${motion}`}>
           {isInlineKind ? (
             <video
               ref={videoRef}
@@ -355,7 +405,17 @@ export function ReelsCarousel({ reels }: { reels: ReelInput[] }) {
               onEnded={handleEnded}
               onPlay={() => setPlaying(true)}
               onPause={() => setPlaying(false)}
-              onError={() => setPlaying(false)}
+              onError={(e) => {
+                const el = e.currentTarget;
+                if (activeMedia.kind === 'cloudinary' && activeMedia.fallbackSrc && el.src !== activeMedia.fallbackSrc) {
+                  console.warn('[Reels] Primary src failed, falling back to direct MP4:', activeMedia.fallbackSrc);
+                  el.src = activeMedia.fallbackSrc;
+                  el.play().catch(() => setPlaying(false));
+                  return;
+                }
+                console.error('[Reels] Video playback error:', e);
+                setPlaying(false);
+              }}
               onClick={activatePrimary}
               className="absolute inset-0 w-full h-full object-cover bg-black cursor-pointer"
             />
@@ -366,11 +426,11 @@ export function ReelsCarousel({ reels }: { reels: ReelInput[] }) {
             <span className="absolute inset-0 flex items-center justify-center text-5xl">{activeReel.icon || '🎬'}</span>
           )}
 
-          {/* dark gradient — hidden while playing */}
-          <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/50 pointer-events-none ${motion} ${playing ? 'opacity-0' : 'opacity-100'}`} aria-hidden="true" />
+          {/* dark gradient — hidden while playing, visible on hover */}
+          <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/50 pointer-events-none ${motion} ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`} aria-hidden="true" />
 
-          {/* category + mute */}
-          <div className={`absolute top-0 inset-x-0 p-3 flex items-start justify-between ${motion} ${playing ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          {/* category + mute (accessible on hover even while playing) */}
+          <div className={`absolute top-0 inset-x-0 p-3 z-30 flex items-start justify-between ${motion} ${playing ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100' : 'opacity-100'}`}>
             <span className="px-2 py-0.5 rounded bg-black/70 text-[9px] font-medium text-accent border border-accent/30 uppercase tracking-wider">
               {activeReel.category || 'Guide'}
             </span>
@@ -401,7 +461,7 @@ export function ReelsCarousel({ reels }: { reels: ReelInput[] }) {
               activatePrimary();
             }}
             aria-label={playing ? `Pause ${activeReel.title}` : `Play ${activeReel.title}`}
-            className={`absolute inset-0 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-accent ${activeMedia.kind === 'none' ? 'cursor-default' : 'cursor-pointer'}`}
+            className={`absolute inset-0 z-20 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-accent ${activeMedia.kind === 'none' ? 'cursor-default' : 'cursor-pointer'}`}
           >
             {activeMedia.kind === 'none' ? (
               <span className="flex flex-col items-center gap-2 text-neutral-300">
@@ -417,8 +477,8 @@ export function ReelsCarousel({ reels }: { reels: ReelInput[] }) {
             )}
           </button>
 
-          {/* bottom info — hidden while playing */}
-          <div className={`absolute bottom-0 inset-x-0 p-4 text-left ${motion} ${playing ? 'opacity-0 translate-y-3 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
+          {/* bottom info — hidden while playing, visible on hover */}
+          <div className={`absolute bottom-0 inset-x-0 p-4 text-left z-30 ${motion} ${playing ? 'opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0' : 'opacity-100 translate-y-0'}`}>
             <div className="flex items-end justify-between gap-2">
               <h3 className="font-heading font-medium text-sm text-white leading-snug line-clamp-2">{activeReel.title}</h3>
               {activeMedia.kind !== 'none' && (
