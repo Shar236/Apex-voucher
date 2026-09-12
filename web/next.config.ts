@@ -19,6 +19,7 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Calculator redirects
       {
         source: "/calculators/gre-to-gmat",
         destination: "/calculators/gre-to-gmat-conversion",
@@ -32,6 +33,152 @@ const nextConfig: NextConfig = {
       {
         source: "/calculators/sat-to-act",
         destination: "/calculators/sat-to-act-conversion",
+        permanent: true,
+      },
+
+      // Legacy WordPress & Google Indexed Product Redirects
+      {
+        source: "/discounted-pte-voucher",
+        destination: "/exam-vouchers/pearson-pte-academic-voucher",
+        permanent: true,
+      },
+      {
+        source: "/discounted-pte-academic-voucher",
+        destination: "/exam-vouchers/pearson-pte-academic-voucher",
+        permanent: true,
+      },
+      {
+        source: "/pte-voucher",
+        destination: "/exam-vouchers/pearson-pte-academic-voucher",
+        permanent: true,
+      },
+      {
+        source: "/pte-academic-voucher",
+        destination: "/exam-vouchers/pearson-pte-academic-voucher",
+        permanent: true,
+      },
+      {
+        source: "/pte-academic",
+        destination: "/exam-vouchers/pearson-pte-academic-voucher",
+        permanent: true,
+      },
+      {
+        source: "/discounted-pte-core-voucher",
+        destination: "/exam-vouchers/pearson-pte-core-voucher",
+        permanent: true,
+      },
+      {
+        source: "/pte-core-voucher",
+        destination: "/exam-vouchers/pearson-pte-core-voucher",
+        permanent: true,
+      },
+      {
+        source: "/pte-core",
+        destination: "/exam-vouchers/pearson-pte-core-voucher",
+        permanent: true,
+      },
+      {
+        source: "/pte-practice-test",
+        destination: "/exam-vouchers/pearson-pte-practice-test",
+        permanent: true,
+      },
+      {
+        source: "/discounted-toefl-voucher",
+        destination: "/exam-vouchers/ets-toefl-voucher",
+        permanent: true,
+      },
+      {
+        source: "/toefl-voucher",
+        destination: "/exam-vouchers/ets-toefl-voucher",
+        permanent: true,
+      },
+      {
+        source: "/discounted-gre-voucher",
+        destination: "/exam-vouchers/ets-gre-voucher",
+        permanent: true,
+      },
+      {
+        source: "/gre-voucher",
+        destination: "/exam-vouchers/ets-gre-voucher",
+        permanent: true,
+      },
+      {
+        source: "/discounted-duolingo-voucher",
+        destination: "/exam-vouchers/duolingo-english-test-voucher",
+        permanent: true,
+      },
+      {
+        source: "/duolingo-voucher",
+        destination: "/exam-vouchers/duolingo-english-test-voucher",
+        permanent: true,
+      },
+      {
+        source: "/ielts-voucher",
+        destination: "/exam-vouchers/ielts-exam-voucher",
+        permanent: true,
+      },
+      {
+        source: "/discounted-ielts-voucher",
+        destination: "/exam-vouchers/ielts-exam-voucher",
+        permanent: true,
+      },
+
+      // Catalog & Shop URLs
+      {
+        source: "/all-vouchers",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+      {
+        source: "/vouchers",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+      {
+        source: "/shop",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+      {
+        source: "/shop/:path*",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+      {
+        source: "/products",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+      {
+        source: "/product-category/:path*",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+
+      // Legacy WordPress standard pages
+      {
+        source: "/cart",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+      {
+        source: "/checkout",
+        destination: "/exam-vouchers",
+        permanent: true,
+      },
+      {
+        source: "/my-account",
+        destination: "/account",
+        permanent: true,
+      },
+      {
+        source: "/contact-us",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/about-us",
+        destination: "/about",
         permanent: true,
       },
     ];
