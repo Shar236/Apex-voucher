@@ -54,7 +54,31 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Smart PTE Redirects
+  // 2. Legacy WordPress Home / System variations
+  if (lower.startsWith('/home') || lower === '/home-3') {
+    return NextResponse.redirect(new URL('/', request.url), 301);
+  }
+  if (lower === '/tc') {
+    return NextResponse.redirect(new URL('/terms', request.url), 301);
+  }
+
+  // 3. City-specific voucher landing pages (Vadodara, Ludhiana, Haryana, Jalandhar, Karnal)
+  if (
+    lower.includes('vadodara') ||
+    lower.includes('ludhiana') ||
+    lower.includes('haryana') ||
+    lower.includes('jalandhar') ||
+    lower.includes('karnal')
+  ) {
+    return NextResponse.redirect(new URL('/exam-vouchers', request.url), 301);
+  }
+
+  // 4. Bulk purchase & Institute inquiries
+  if (lower.includes('bulk-purchase') || lower.includes('institute')) {
+    return NextResponse.redirect(new URL('/contact', request.url), 301);
+  }
+
+  // 5. Smart PTE Redirects
   if (lower.includes('pte')) {
     if (lower.includes('core')) {
       return NextResponse.redirect(new URL('/exam-vouchers/pearson-pte-core-voucher', request.url), 301);
@@ -71,47 +95,47 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/exam-vouchers/pearson-pte-academic-voucher', request.url), 301);
   }
 
-  // 3. Smart TOEFL Redirects
+  // 6. Smart TOEFL Redirects
   if (lower.includes('toefl')) {
     return NextResponse.redirect(new URL('/exam-vouchers/ets-toefl-voucher', request.url), 301);
   }
 
-  // 4. Smart GRE Redirects
+  // 7. Smart GRE Redirects
   if (lower.includes('gre')) {
     return NextResponse.redirect(new URL('/exam-vouchers/ets-gre-voucher', request.url), 301);
   }
 
-  // 5. Smart Duolingo Redirects
-  if (lower.includes('duolingo')) {
+  // 8. Smart Duolingo Redirects
+  if (lower.includes('duolingo') || lower.includes('duolingi')) {
     return NextResponse.redirect(new URL('/exam-vouchers/duolingo-english-test-voucher', request.url), 301);
   }
 
-  // 6. Smart IELTS Redirects
+  // 9. Smart IELTS Redirects
   if (lower.includes('ielts')) {
     return NextResponse.redirect(new URL('/exam-vouchers/ielts-exam-voucher', request.url), 301);
   }
 
-  // 7. Smart CELPIP Redirects
+  // 10. Smart CELPIP Redirects
   if (lower.includes('celpip')) {
     return NextResponse.redirect(new URL('/exam-vouchers/celpip-exam-voucher', request.url), 301);
   }
 
-  // 8. Smart OET Redirects
+  // 11. Smart OET Redirects
   if (lower.includes('oet')) {
     return NextResponse.redirect(new URL('/exam-vouchers/oet-exam-voucher', request.url), 301);
   }
 
-  // 9. Smart ACT Redirects
+  // 12. Smart ACT Redirects
   if (lower.includes('act')) {
     return NextResponse.redirect(new URL('/exam-vouchers/act-exam-voucher', request.url), 301);
   }
 
-  // 10. Smart LanguageCert Redirects
+  // 13. Smart LanguageCert Redirects
   if (lower.includes('languagecert')) {
     return NextResponse.redirect(new URL('/exam-vouchers/languagecert-exam-voucher', request.url), 301);
   }
 
-  // 11. Legacy Shop / Catalog / Store / Cart / Product routes
+  // 14. Legacy Shop / Catalog / Store / Cart / Product routes
   if (
     lower.includes('shop') ||
     lower.includes('voucher') ||
@@ -126,20 +150,30 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/exam-vouchers', request.url), 301);
   }
 
-  // 12. Booking and calculators
-  if (lower.includes('book')) {
+  // 15. Booking and calculators
+  if (lower.includes('book') || lower.includes('booking')) {
     return NextResponse.redirect(new URL('/exam-booking', request.url), 301);
   }
   if (lower.includes('calc')) {
     return NextResponse.redirect(new URL('/calculators', request.url), 301);
   }
 
-  // 13. Blog / Articles
-  if (lower.includes('blog') || lower.includes('article') || lower.includes('news') || lower.includes('post')) {
+  // 16. Blog / Articles & Legacy WordPress Posts
+  if (
+    lower.includes('blog') ||
+    lower.includes('article') ||
+    lower.includes('news') ||
+    lower.includes('post') ||
+    lower.includes('scholarship') ||
+    lower.includes('overtime') ||
+    lower.includes('tips') ||
+    lower.includes('write-for-us') ||
+    lower.startsWith('/tag')
+  ) {
     return NextResponse.redirect(new URL('/blog', request.url), 301);
   }
 
-  // 14. Contact / About / Policy / FAQ
+  // 17. Contact / About / Policy / FAQ
   if (lower.includes('contact')) {
     return NextResponse.redirect(new URL('/contact', request.url), 301);
   }
@@ -162,7 +196,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/account', request.url), 301);
   }
 
-  // 15. WordPress administrative / system routes
+  // 18. WordPress administrative / system routes
   if (lower.startsWith('/wp-') || lower.includes('xmlrpc') || lower.includes('feed')) {
     return NextResponse.redirect(new URL('/', request.url), 301);
   }
