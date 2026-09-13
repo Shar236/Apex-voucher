@@ -6,6 +6,7 @@ const TONES = {
   success: 'bg-success/12 text-success border-success/25',
   info: 'bg-sky-500/12 text-sky-600 dark:text-sky-400 border-sky-500/25',
   warn: 'bg-amber-500/12 text-amber-600 dark:text-amber-400 border-amber-500/25',
+  danger: 'bg-rose-500/12 text-rose-600 dark:text-rose-400 border-rose-500/25',
   neutral: 'bg-surface-raised text-ink-muted border-line',
 } as const;
 

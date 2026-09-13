@@ -564,11 +564,29 @@ export function WebsiteCMSAdmin() {
                       </td>
                       <td className="p-4 text-emerald-600 dark:text-emerald-400 font-black">Save ₹{savings.toLocaleString()} ({disc}%)</td>
                       <td className="p-4">
-                        {/* Stock is derived from voucher inventory (Products &amp; Pricing) —
-                            the old editable checkbox here was a silent no-op. */}
-                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black border ${prod.inStock ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400'}`}>
-                          {prod.inStock ? 'IN STOCK' : 'NO INVENTORY'}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const next = !prod.inStock;
+                            const res = await adminApi.quickUpdateStock(prod._id, next);
+                            if (res.success) {
+                              notify.success(`${prod.name} marked as ${next ? 'In Stock' : 'Out of Stock'}`);
+                              setProductPrices((prev) => prev.map((p, i) => (i === idx ? { ...p, inStock: next } : p)));
+                              adminApi.revalidatePublicProducts();
+                            } else {
+                              notify.error((res.message as string) || 'Failed to update stock status');
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black border cursor-pointer inline-flex items-center gap-1 transition-all ${
+                            prod.inStock
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'
+                              : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400'
+                          }`}
+                          title="Click to toggle In Stock / Out of Stock"
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${prod.inStock ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          {prod.inStock ? 'IN STOCK' : 'OUT OF STOCK'}
+                        </button>
                       </td>
                       <td className="p-4 text-right">
                         <button onClick={() => handleQuickPriceSave(prod)} className="px-4 py-2 rounded-xl bg-brand-pink hover:bg-[#E00052] text-white font-black text-xs shadow-md inline-flex items-center gap-1.5 cursor-pointer">

@@ -1,4 +1,4 @@
-import { Clock, Flame, CheckCircle2 } from 'lucide-react';
+import { Clock, Flame, CheckCircle2, AlertTriangle } from 'lucide-react';
 import Badge from './badge';
 import type { Product } from '@/lib/types';
 
@@ -8,12 +8,11 @@ const STOCK_PHRASE = /out of stock|in stock|low stock|limited stock|sold out|una
 /**
  * A single status/marketing pill for a product card.
  *
- * Inventory is NEVER surfaced here — there is no "Out of Stock", "Low Stock" or
- * "Available on Request" state. Every active voucher shows the same consistent
- * purchasable pill. Priority: coming soon → promo/marketing badge → "In Stock".
+ * Priority: coming soon → out of stock → promo/marketing badge → "In Stock".
  */
 export default function StockBadge({ product, className = '' }: { product: Product; className?: string }) {
   const isComingSoon = product?.comingSoon || product?.stockStatus === 'COMING SOON';
+  const isOutOfStock = product?.inStock === false || product?.stockStatus === 'OUT OF STOCK';
   const rawPromo = (Array.isArray(product?.badges) && product.badges[0]) || (product?.badgeEnabled !== false && product?.badge) || '';
   const promo = STOCK_PHRASE.test(String(rawPromo)) ? '' : rawPromo;
 
@@ -21,6 +20,13 @@ export default function StockBadge({ product, className = '' }: { product: Produ
     return (
       <Badge tone="info" icon={<Clock className="w-3 h-3 shrink-0" />} className={className} title="Coming Soon">
         Coming Soon
+      </Badge>
+    );
+
+  if (isOutOfStock)
+    return (
+      <Badge tone="danger" icon={<AlertTriangle className="w-3 h-3 shrink-0" />} className={className} title="Out of Stock">
+        Out of Stock
       </Badge>
     );
 

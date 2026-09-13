@@ -53,6 +53,7 @@ export interface AdminProduct {
   stockStatus?: string;
   lowStockThreshold?: number;
   archived?: boolean;
+  inStock?: boolean;
   durationOptions?: Array<{ key: string; label: string; sellingPrice: number; originalPrice: number; validityDays: number; enabled: boolean }>;
   redemptionGuide?: Product['redemptionGuide'];
   purchaseGuide?: Product['purchaseGuide'];
@@ -86,7 +87,7 @@ interface Draft {
   durationOptions: DurationDraft[];
   deliveryType: string; stockType: string; logo: string; image: string; imagePublicId: string;
   badge: string; badges: string;
-  badgeEnabled: boolean; featured: boolean; active: boolean; comingSoon: boolean;
+  badgeEnabled: boolean; featured: boolean; active: boolean; comingSoon: boolean; inStock: boolean;
   shortDescription: string; description: string; inclusions: string;
   officialWebsiteUrl: string; officialProductUrl: string; sku: string; productCode: string;
   productContent: { enabled: boolean; heading: string; content: string };
@@ -139,6 +140,7 @@ const toDraft = (p?: AdminProduct | null): Draft => ({
   featured: !!p?.featured,
   active: p?.active !== false,
   comingSoon: !!p?.comingSoon,
+  inStock: p?.inStock !== false,
   shortDescription: str(p?.shortDescription),
   description: str(p?.description),
   inclusions: Array.isArray(p?.inclusions) ? (p!.inclusions as string[]).join('\n') : str(p?.inclusions),
@@ -232,6 +234,7 @@ const buildPayload = (d: Draft) => ({
   featured: d.featured,
   active: d.active,
   comingSoon: d.comingSoon,
+  inStock: d.inStock,
   shortDescription: d.shortDescription.trim(),
   description: d.description.trim(),
   inclusions: d.inclusions.split('\n').map((s) => s.trim()).filter(Boolean),
@@ -722,6 +725,7 @@ export function ProductEditor({
           <Field label="Badges (comma separated)" value={draft.badges} onChange={(v) => set('badges', v)} placeholder="Best Seller, Study Abroad" />
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Check label="In Stock (Available for Purchase)" checked={draft.inStock} onChange={(v) => set('inStock', v)} />
           <Check label="Show Badge on Card" checked={draft.badgeEnabled} onChange={(v) => set('badgeEnabled', v)} />
           <Check label="Featured Product" checked={draft.featured} onChange={(v) => set('featured', v)} />
           <Check label="Active & Visible" checked={draft.active} onChange={(v) => set('active', v)} />

@@ -135,10 +135,17 @@ export function VoucherProvider({ children }: { children: ReactNode }) {
   }, [loadAccountData]);
 
   const startCheckout = useCallback((product: CheckoutProduct, meta: CheckoutMeta | null = null) => {
+    if (product && !Array.isArray(product)) {
+      const p = product as Product;
+      if (p.inStock === false || p.stockStatus === 'OUT OF STOCK') {
+        showToast('This product is currently out of stock.');
+        return;
+      }
+    }
     setCheckoutProduct(product);
     setCheckoutMeta(meta);
     setIsCheckoutOpen(true);
-  }, []);
+  }, [showToast]);
 
   const transferVoucher = useCallback(
     async (voucherId: string, targetEmail: string) => {

@@ -55,7 +55,8 @@ export function VoucherCard({ product }: { product: Product }) {
     : null;
 
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
-  const canBuyNow = !isComingSoon;
+  const isOutOfStock = product.inStock === false || product.stockStatus === 'OUT OF STOCK';
+  const canBuyNow = !isComingSoon && !isOutOfStock;
 
   const validityLabel = durationValidity || (product.validityMonths
     ? `Valid ${product.validityMonths} Month${product.validityMonths === 1 ? '' : 's'}`
@@ -129,6 +130,10 @@ export function VoucherCard({ product }: { product: Product }) {
         {isComingSoon ? (
           <Button variant="disabled" size="md" fullWidth disabled>
             Coming Soon
+          </Button>
+        ) : isOutOfStock ? (
+          <Button variant="disabled" size="md" fullWidth disabled>
+            Out of Stock
           </Button>
         ) : (
           <Button variant="primary" size="md" fullWidth onClick={() => startCheckout(productWithDuration)}>

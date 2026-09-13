@@ -796,18 +796,9 @@ export const listAdminProducts = async (req, res, next) => {
       const threshold = p.lowStockThreshold || 10;
       const isUnlimited = p.stockType === 'UNLIMITED';
 
-      let stockStatus;
-      let inStock;
-      if (p.comingSoon) {
-        stockStatus = 'COMING SOON';
-        inStock = false;
-      } else if (isUnlimited) {
-        stockStatus = 'IN STOCK';
-        inStock = true;
-      } else {
-        stockStatus = available > threshold ? 'IN STOCK' : available > 0 ? 'LOW STOCK' : 'OUT OF STOCK';
-        inStock = available > 0;
-      }
+      const isExplicitlyOutOfStock = p.inStock === false;
+      const inStock = p.comingSoon ? false : !isExplicitlyOutOfStock;
+      const stockStatus = p.comingSoon ? 'COMING SOON' : (isExplicitlyOutOfStock ? 'OUT OF STOCK' : 'IN STOCK');
 
       return {
         ...p,
@@ -822,12 +813,12 @@ export const listAdminProducts = async (req, res, next) => {
 
     let filtered = products;
     if (status === 'out_of_stock') {
-      filtered = products.filter((p) => p.availableVouchers === 0);
+      filtered = products.filter((p) => p.inStock === false);
     } else if (status === 'low_stock') {
-      filtered = products.filter((p) => p.availableVouchers > 0 && p.availableVouchers <= (p.lowStockThreshold || 10));
+      filtered = products.filter((p) => p.inStock !== false && p.availableVouchers > 0 && p.availableVouchers <= (p.lowStockThreshold || 10));
     }
 
-    const allProducts = await Product.find().select('_id active archived featured lowStockThreshold stockType').lean();
+    const allProducts = await Product.find().select('_id inStock active archived featured lowStockThreshold stockType').lean();
     const allStockByProduct = await aggregateVoucherStatsByProduct(allProducts.map((p) => p._id));
     let totalCount = allProducts.length;
     let activeCount = 0;
@@ -842,10 +833,13 @@ export const listAdminProducts = async (req, res, next) => {
       if (p.active) activeCount++;
       else inactiveCount++;
       if (p.featured) featuredCount++;
+      if (p.inStock === false) {
+        outOfStockCount++;
+        continue;
+      }
       if (p.stockType === 'UNLIMITED') continue;
       const avail = getVoucherStats(allStockByProduct, p._id).available;
-      if (avail === 0) outOfStockCount++;
-      else if (avail <= (p.lowStockThreshold || 10)) lowStockCount++;
+      if (avail > 0 && avail <= (p.lowStockThreshold || 10)) lowStockCount++;
     }
 
     const p = Math.max(1, parseInt(page, 10) || 1);
@@ -886,17 +880,25 @@ export const getAdminProduct = async (req, res, next) => {
 
     const stockByProduct = await aggregateVoucherStatsByProduct([product._id]);
     const { available, reserved, sold, total } = getVoucherStats(stockByProduct, product._id);
+    const isExplicitlyOutOfStock = product.inStock === false;
+    const isUnlimited = product.stockType === 'UNLIMITED';
+
+    const stockStatus = product.comingSoon
+      ? 'COMING SOON'
+      : isExplicitlyOutOfStock
+      ? 'OUT OF STOCK'
+      : 'IN STOCK';
 
     res.json({
       success: true,
       data: {
         ...product,
-        availableVouchers: available,
+        availableVouchers: isUnlimited ? null : available,
         reservedVouchers: reserved,
         soldVouchers: sold,
         totalVouchers: total,
-        stockStatus: available > (product.lowStockThreshold || 10) ? 'IN STOCK' : available > 0 ? 'LOW STOCK' : 'OUT OF STOCK',
-        inStock: available > 0,
+        stockStatus,
+        inStock: product.comingSoon ? false : !isExplicitlyOutOfStock,
       },
     });
   } catch (err) {
@@ -914,6 +916,7 @@ export const createProduct = async (req, res, next) => {
       ...normalizeProductPayload(req.body),
       provider: provider || brand || 'Pearson',
       brand: brand || provider || 'Pearson PTE',
+      ...(req.body.inStock !== undefined ? { inStock: req.body.inStock === true || req.body.inStock === 'true' } : {}),
     };
     const product = new Product(payload);
     await product.save();
@@ -948,7 +951,11 @@ export const updateProduct = async (req, res, next) => {
     // edit form round-trips stale list-row snapshots, and findByIdAndUpdate
     // (unlike save()) skips the pre-save hook that recomputes them. Writing a
     // client snapshot would persist a stale discount/stock view of the product.
-    delete updatePayload.inStock;
+    if (req.body.inStock !== undefined) {
+      updatePayload.inStock = req.body.inStock === true || req.body.inStock === 'true';
+    } else {
+      delete updatePayload.inStock;
+    }
     delete updatePayload.discountPercent;
     delete updatePayload.availableVouchers;
     delete updatePayload.reservedVouchers;
@@ -996,6 +1003,10 @@ export const updateProduct = async (req, res, next) => {
     if (oldProduct.active !== product.active) {
       diffs.oldActive = oldProduct.active;
       diffs.newActive = product.active;
+    }
+    if (oldProduct.inStock !== product.inStock) {
+      diffs.oldInStock = oldProduct.inStock;
+      diffs.newInStock = product.inStock;
     }
 
     await recordAudit(req, 'PRODUCT_UPDATED', 'Product', product._id, {
@@ -1072,6 +1083,28 @@ export const quickUpdateFeatured = async (req, res, next) => {
     await recordAudit(req, 'PRODUCT_FEATURED_CHANGED', 'Product', product._id, {
       name: product.name,
       featured: product.featured,
+    });
+
+    res.json({ success: true, data: product });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const quickUpdateStock = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { inStock } = req.body;
+    if (inStock === undefined) {
+      return next(new AppError('inStock is required', 400));
+    }
+    const nextInStock = inStock === true || inStock === 'true';
+    const product = await Product.findByIdAndUpdate(id, { inStock: nextInStock }, { new: true });
+    if (!product) return next(new AppError('Product not found', 404));
+
+    await recordAudit(req, 'PRODUCT_STOCK_CHANGED', 'Product', product._id, {
+      name: product.name,
+      inStock: product.inStock,
     });
 
     res.json({ success: true, data: product });

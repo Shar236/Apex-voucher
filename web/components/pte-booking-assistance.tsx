@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowRight, ShieldCheck, Calendar, Headphones, Check, Info } from 'lucide-react';
 import { PearsonOfficialLogo } from '@/components/official-brand-logos';
+import { PearsonPartnerLink } from '@/components/pearson-partner-link';
 import { formatPrice } from '@/lib/api';
 import { useCart } from '@/components/cart-provider';
 import type { Product, PTEBookingCatalog, PTEBookingProduct, PTEBookingPageContent } from '@/lib/types';
@@ -337,6 +338,10 @@ export function PTEBookingAssistance({ catalog }: PTEBookingAssistanceProps) {
                     <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF005C] mt-0.5">
                       {card.serviceLabel || 'EXAM BOOKING SERVICE'}
                     </span>
+                  </div>
+
+                  <div className="mb-3">
+                    <PearsonPartnerLink />
                   </div>
 
                   {/* Special Booking Price Box */}

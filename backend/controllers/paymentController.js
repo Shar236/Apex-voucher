@@ -98,6 +98,7 @@ export const resolveOrderLineItems = async (lineItems) => {
     const pteProduct = pteMap[idStr];
     if (!product && !pteProduct) throw new AppError('Product not found or inactive', 400, 'PRODUCT_MISSING');
     if (product && product.comingSoon) throw new AppError(`${product.name} is not available for purchase yet`, 400, 'PRODUCT_COMING_SOON');
+    if (product && product.inStock === false) throw new AppError('This product is currently out of stock.', 400, 'PRODUCT_OUT_OF_STOCK');
 
     const qtyRaw = Number(it.quantity);
     if (!Number.isFinite(qtyRaw) || !Number.isInteger(qtyRaw) || qtyRaw < 1) {

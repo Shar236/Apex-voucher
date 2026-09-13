@@ -133,8 +133,8 @@ const applyAvailability = async (products, req = null) => {
       // are nulled (kept only so old clients don't crash on a missing key).
       availability: null,
       availableStock: null,
-      inStock: !isComingSoon,
-      stockStatus: isComingSoon ? 'COMING SOON' : 'IN STOCK',
+      inStock: isComingSoon ? false : raw.inStock !== false,
+      stockStatus: isComingSoon ? 'COMING SOON' : (raw.inStock === false ? 'OUT OF STOCK' : 'IN STOCK'),
       sellingPrice: effectiveSellingPrice,
       originalPrice: effectiveOriginalPrice,
       discountedPrice: effectiveSellingPrice,
@@ -185,8 +185,9 @@ const buildProductJsonLd = (product) => {
   const price = product.sellingPrice || product.discountedPrice || 0;
   // Always InStock for search engines — the store fulfils every purchase (from
   // inventory or via post-payment fulfilment). Only a "coming soon" product,
-  // which cannot be bought yet, is advertised as unavailable.
-  const availability = product.comingSoon ? 'https://schema.org/PreOrder' : 'https://schema.org/InStock';
+  const availability = product.comingSoon
+    ? 'https://schema.org/PreOrder'
+    : (product.inStock === false ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock');
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',

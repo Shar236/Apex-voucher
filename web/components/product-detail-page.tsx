@@ -10,6 +10,7 @@ import { FaqAccordion } from '@/components/product/faq-accordion';
 import { RedemptionGuideSection } from '@/components/product/redemption-guide-section';
 import { PurchaseGuideSection } from '@/components/product/purchase-guide-section';
 import { VoucherCard } from '@/components/voucher-card';
+import { PearsonPartnerLink, isPearsonPteProduct } from '@/components/pearson-partner-link';
 import { StockBadge, PriceDisplay, DiscountBadge, DeliveryValidityBar, SectionHeading } from '@/components/ui';
 import { getRedemptionGuide } from '@/lib/redemption-guides';
 import { formatPrice } from '@/lib/api';
@@ -139,6 +140,8 @@ export function ProductDetailPage({ product, related, supportPhone = '+91 985592
                   Official Website <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
+
+              {isPearsonPteProduct(product) && <PearsonPartnerLink />}
             </div>
           </div>
         </div>

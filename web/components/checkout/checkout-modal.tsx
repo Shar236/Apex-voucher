@@ -267,6 +267,13 @@ export function CheckoutModal() {
       setError('Please fill in your name and email/WhatsApp number for voucher delivery.');
       return;
     }
+    const hasOutOfStock = checkoutItems.some(
+      (it) => it.inStock === false || it.stockStatus === 'OUT OF STOCK'
+    );
+    if (hasOutOfStock) {
+      setError('This product is currently out of stock.');
+      return;
+    }
 
     setIsProcessing(true);
     setProcessingState('creating');

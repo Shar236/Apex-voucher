@@ -96,6 +96,17 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
       refresh();
     }
   };
+  const toggleStock = async (p: AdminProduct) => {
+    const nextStock = p.inStock === false ? true : false;
+    const res = await adminApi.quickUpdateStock(p._id, nextStock);
+    if (res.success) {
+      notify.success(`${p.name} is now ${nextStock ? 'In Stock' : 'Out of Stock'}`);
+      adminApi.revalidatePublicProducts(p.slug ? [p.slug] : []);
+      refresh();
+    } else {
+      notify.error((res.message as string) || 'Failed to update availability status');
+    }
+  };
   const toggleFeatured = async (p: AdminProduct) => {
     const res = await adminApi.quickUpdateFeatured(p._id, !p.featured);
     if (res.success) {
@@ -249,7 +260,7 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
                 <Th className="text-right">Original MRP</Th>
                 <Th className="text-right">Selling Price</Th>
                 <Th className="text-center">Discount</Th>
-                <Th className="text-center">Available Stock</Th>
+                <Th className="text-center">Availability</Th>
                 <Th className="text-center">Status</Th>
                 <Th className="text-center">Featured</Th>
                 <Th className="text-right">Actions</Th>
@@ -337,21 +348,19 @@ export function ProductsAdmin({ onNavigate }: { onNavigate?: (tab: string) => vo
                       </span>
                     </Td>
                     <Td className="text-center whitespace-nowrap">
-                      {isUnlimited ? (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400">
-                          Unlimited
-                        </span>
-                      ) : (
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
-                          stockBadge === 'emerald'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'
-                            : stockBadge === 'amber'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400'
-                            : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400'
-                        }`}>
-                          {availableCount} Available ({p.stockStatus || (availableCount > 0 ? 'IN STOCK' : 'OUT OF STOCK')})
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleStock(p)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black border transition-all cursor-pointer shadow-xs ${
+                          p.inStock === false
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
+                        }`}
+                        title={p.inStock === false ? 'Click to mark In Stock' : 'Click to mark Out of Stock'}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${p.inStock === false ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                        <span>{p.inStock === false ? 'Out of Stock' : 'In Stock'}</span>
+                      </button>
                     </Td>
                     <Td className="text-center whitespace-nowrap">
                       {p.archived ? (

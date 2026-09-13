@@ -14,6 +14,7 @@ export function BuyActions({ product, selectedDuration, size = 'lg' }: { product
   const { addToCart } = useCart();
   const { startCheckout } = useVoucher();
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
+  const isOutOfStock = product.inStock === false || product.stockStatus === 'OUT OF STOCK';
   const productWithDuration = selectedDuration
     ? {
         ...product,
@@ -29,6 +30,10 @@ export function BuyActions({ product, selectedDuration, size = 'lg' }: { product
       {isComingSoon ? (
         <Button variant="disabled" size={size} disabled>
           <Clock className="w-4 h-4" /> Coming Soon
+        </Button>
+      ) : isOutOfStock ? (
+        <Button variant="disabled" size={size} disabled>
+          Out of Stock
         </Button>
       ) : (
         <>
@@ -49,6 +54,7 @@ export function StickyMobileBar({ product, selectedDuration }: { product: Produc
   const { formatPrice, currency } = useCart();
   const { startCheckout } = useVoucher();
   const isComingSoon = product.comingSoon || product.stockStatus === 'COMING SOON';
+  const isOutOfStock = product.inStock === false || product.stockStatus === 'OUT OF STOCK';
   if (isComingSoon) return null;
 
   const { current: unitPrice, currency: itemCurrency } = unitDisplayPrice(product, selectedDuration, currency);
@@ -68,9 +74,15 @@ export function StickyMobileBar({ product, selectedDuration }: { product: Produc
         <span className="block text-[10px] font-normal text-ink-muted uppercase tracking-wider truncate">{product.name}</span>
         <span className="font-heading font-semibold text-lg text-ink">{formatPrice(unitPrice, itemCurrency)}</span>
       </div>
-      <Button variant="primary" size="md" className="shrink-0" onClick={() => startCheckout(productWithDuration)}>
-        <Lock className="w-3.5 h-3.5" /> Buy This Voucher
-      </Button>
+      {isOutOfStock ? (
+        <Button variant="disabled" size="md" className="shrink-0" disabled>
+          Out of Stock
+        </Button>
+      ) : (
+        <Button variant="primary" size="md" className="shrink-0" onClick={() => startCheckout(productWithDuration)}>
+          <Lock className="w-3.5 h-3.5" /> Buy This Voucher
+        </Button>
+      )}
     </div>
   );
 }

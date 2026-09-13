@@ -11,6 +11,7 @@ import {
   quickUpdatePrice,
   quickUpdateStatus,
   quickUpdateFeatured,
+  quickUpdateStock,
   deleteProduct,
   duplicateProduct,
   archiveProduct,
@@ -105,6 +106,7 @@ r.patch('/products/:id', updateProduct);
 r.patch('/products/:id/price', quickUpdatePrice);
 r.patch('/products/:id/status', quickUpdateStatus);
 r.patch('/products/:id/featured', quickUpdateFeatured);
+r.patch('/products/:id/stock', quickUpdateStock);
 r.post('/products/:id/duplicate', duplicateProduct);
 r.patch('/products/:id/archive', archiveProduct);
 r.patch('/products/:id/restore', restoreProduct);

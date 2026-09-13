@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Search, RefreshCw, Download, Mail, Plus, Ticket } from 'lucide-react';
+import { Search, RefreshCw, Download, Mail, Plus, Ticket, Ban } from 'lucide-react';
 import { adminApi, formatPrice } from '@/lib/api';
 import { Th, Td, Empty, FormCard, Label } from '@/components/admin/admin-ui';
 import { ErrorState } from '@/components/ui/data-table';
@@ -126,6 +126,21 @@ export function VoucherRequestsAdmin() {
     else notify.error((res.message as string) || 'Failed to update request');
   };
 
+  const cancelRequest = async (row: VRRow) => {
+    const label = row.customerName ? `${row.customerName} (${row.productName || 'Voucher'})` : (row.productName || 'this request');
+    if (!window.confirm(`Are you sure you want to cancel the voucher request for ${label}?`)) {
+      return;
+    }
+    const res = await adminApi.cancelVoucherRequest(row._id, 'Cancelled by admin');
+    if (res?.success) {
+      notify.success(`Voucher request ${row.requestId || ''} cancelled.`);
+      if (selected?._id === row._id) closeDetail();
+      refresh();
+    } else {
+      notify.error((res?.message as string) || 'Failed to cancel voucher request');
+    }
+  };
+
   const addCodesForRequest = async () => {
     if (!selected) return;
     const codes = codeInput.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
@@ -179,18 +194,26 @@ export function VoucherRequestsAdmin() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Total', count: stats.total || 0, tint: '#6C3CE0' },
-          { label: 'Pending', count: stats.pending || 0, tint: '#D97706' },
-          { label: 'Processing', count: stats.processing || 0, tint: '#0284C7' },
-          { label: 'Awaiting Payment', count: stats.awaitingPayment || 0, tint: '#EC4899' },
-          { label: 'Fulfilled', count: stats.fulfilled || 0, tint: '#10B981' },
+          { label: 'Total', count: stats.total || 0, tint: '#6C3CE0', filterVal: '' },
+          { label: 'Pending', count: stats.pending || 0, tint: '#D97706', filterVal: 'PENDING' },
+          { label: 'Processing', count: stats.processing || 0, tint: '#0284C7', filterVal: 'PROCESSING' },
+          { label: 'Awaiting Payment', count: stats.awaitingPayment || 0, tint: '#EC4899', filterVal: 'AWAITING_PAYMENT' },
+          { label: 'Fulfilled', count: stats.fulfilled || 0, tint: '#10B981', filterVal: 'FULFILLED' },
+          { label: 'Cancelled', count: stats.cancelled || 0, tint: '#64748B', filterVal: 'CANCELLED' },
         ].map((kpi, idx) => (
-          <div key={idx} className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+          <button
+            key={idx}
+            type="button"
+            onClick={() => { setStatus(kpi.filterVal); setPage(1); }}
+            className={`p-4 rounded-2xl bg-white dark:bg-[#161616] border text-left transition-all shadow-sm cursor-pointer ${
+              status === kpi.filterVal ? 'border-brand-pink ring-1 ring-brand-pink/30' : 'border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink/40'
+            }`}
+          >
             <div className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">{kpi.label}</div>
             <div className="font-heading font-black text-2xl mt-1" style={{ color: kpi.tint }}>{kpi.count}</div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -357,6 +380,19 @@ export function VoucherRequestsAdmin() {
                   className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] text-sm font-medium focus:outline-none focus:border-brand-pink"
                 />
               </div>
+
+              {selected.status !== 'CANCELLED' && selected.status !== 'FULFILLED' && (
+                <div className="pt-3 border-t border-neutral-100 dark:border-[#202020] flex items-center justify-between">
+                  <span className="text-xs text-neutral-400 font-bold">No longer fulfilling this request?</span>
+                  <button
+                    type="button"
+                    onClick={() => cancelRequest(selected)}
+                    className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Ban className="w-3.5 h-3.5" /> Cancel Request
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </FormCard>
@@ -392,7 +428,17 @@ export function VoucherRequestsAdmin() {
                       {r.status === 'PENDING' && (
                         <button onClick={() => quickStatus(r, 'PROCESSING')} className="px-2.5 py-1 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black">Start</button>
                       )}
-                      <button onClick={() => openDetail(r)} className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 text-[10px] font-black">Open</button>
+                      <button onClick={() => openDetail(r)} className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-[#262626] text-neutral-700 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-[#333] text-[10px] font-black transition-colors">Open</button>
+                      {r.status !== 'CANCELLED' && r.status !== 'FULFILLED' && (
+                        <button
+                          type="button"
+                          onClick={() => cancelRequest(r)}
+                          className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 text-[10px] font-black transition-colors cursor-pointer"
+                          title="Cancel this voucher request"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </div>
                   </Td>
                 </tr>

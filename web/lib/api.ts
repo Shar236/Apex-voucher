@@ -292,6 +292,8 @@ export const adminApi = {
     request(`/api/admin/products/${id}/status`, { method: 'PATCH', body: JSON.stringify({ active }) }),
   quickUpdateFeatured: (id: string, featured: boolean) =>
     request(`/api/admin/products/${id}/featured`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
+  quickUpdateStock: (id: string, inStock: boolean) =>
+    request(`/api/admin/products/${id}/stock`, { method: 'PATCH', body: JSON.stringify({ inStock }) }),
   deleteProduct: (id: string) => request(`/api/admin/products/${id}`, { method: 'DELETE' }),
   duplicateProduct: (id: string) => request(`/api/admin/products/${id}/duplicate`, { method: 'POST' }),
   archiveProduct: (id: string) => request(`/api/admin/products/${id}/archive`, { method: 'PATCH' }),
@@ -495,6 +497,8 @@ export const adminApi = {
   },
   updateVoucherRequest: (id: string, data: unknown) =>
     request(`/api/admin/voucher-requests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  cancelVoucherRequest: (id: string, adminNotes = 'Cancelled by admin') =>
+    request(`/api/admin/voucher-requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'CANCELLED', adminNotes }) }),
   fulfillments: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/admin/fulfillments${qs ? `?${qs}` : ''}`);

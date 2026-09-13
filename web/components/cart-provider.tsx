@@ -72,6 +72,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = useCallback(
     (product: Product) => {
+      if (product.inStock === false || product.stockStatus === 'OUT OF STOCK') {
+        showToast('This product is currently out of stock.');
+        return;
+      }
       const itemKey = getCartItemKey(product);
       setCart((prev) => {
         const existing = prev.find((i) => getCartItemKey(i) === itemKey);

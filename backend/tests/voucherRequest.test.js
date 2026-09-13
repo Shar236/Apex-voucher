@@ -1,18 +1,3 @@
-/**
- * Voucher Request flow regression suite.
- *
- * Covers the out-of-stock "Request Voucher" path:
- *   - a request is only creatable when the product has ZERO available codes
- *   - duplicate open requests are collapsed, not duplicated
- *   - a request cannot be marked "ready for payment" without real inventory
- *   - FULFILLED is system-only (never a manual admin transition)
- *   - the payment fulfilment hook closes the request exactly once
- *
- * Runs against the configured MongoDB. Only creates "TEST VR" data and cleans
- * up afterwards. SMTP is force-disabled so no mail is sent.
- *
- *   node backend/tests/voucherRequest.test.js
- */
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -150,6 +135,11 @@ const run = async () => {
       'ALREADY_FULFILLED',
       'T10 fulfilled request rejects further admin status changes'
     );
+
+    // T11 — open request can be CANCELLED by admin
+    const { request: rCancel } = await createVoucherRequest({ productId: String(product._id) }, { ...user.toObject(), _id: new mongoose.Types.ObjectId() });
+    const { request: cancelled } = await updateVoucherRequest(rCancel._id, { status: 'CANCELLED', adminNotes: 'Test cancellation', adminUser: { email: 'admin@test.com' } });
+    ok(cancelled.status === 'CANCELLED' && cancelled.cancelledAt instanceof Date && cancelled.adminNotes === 'Test cancellation', 'T11 open request can be cancelled by admin');
   } catch (err) {
     console.error('Fatal:', err);
     failed += 1;
