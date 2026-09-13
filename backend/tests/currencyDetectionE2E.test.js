@@ -15,6 +15,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 process.env.GEO_IP_API_URL = '';
+process.env.GEO_IP_API_URL_FALLBACK = '';
 process.env.SMTP_HOST = '';
 process.env.SMTP_USER = '';
 process.env.SMTP_PASSWORD = '';

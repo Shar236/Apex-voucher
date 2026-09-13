@@ -16,6 +16,13 @@ export function CartDrawer() {
   const totalOriginal = cart.reduce((acc, item) => { const p = unitDisplayPrice(item, item.selectedDuration, currency); return acc + p.original * item.quantity; }, 0);
   const totalSavings = Math.max(0, totalOriginal - totalAmount);
 
+  const hasPteBookingItems = cart.some(
+    (it) => it.voucherType === 'PTE-BOOKING' || it.category === 'PTE' || (it.name || '').toLowerCase().includes('pte')
+  );
+  const hasVoucherItems = cart.some(
+    (it) => it.voucherType !== 'PTE-BOOKING' && it.category !== 'PTE' && !(it.name || '').toLowerCase().includes('pte')
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-md bg-white dark:bg-[#161616] border-l border-[#EAEAEA] dark:border-[#292929] p-6 sm:p-7 shadow-2xl overflow-y-auto h-full flex flex-col justify-between text-neutral-900 dark:text-white">
@@ -28,7 +35,9 @@ export function CartDrawer() {
                 </div>
               </div>
               <div>
-                <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white leading-tight">Your Voucher Cart</h3>
+                <h3 className="font-heading font-black text-lg text-neutral-900 dark:text-white leading-tight">
+                  {hasPteBookingItems && !hasVoucherItems ? 'Your Booking Cart' : 'Your Voucher Cart'}
+                </h3>
                 <p className="text-xs font-bold text-neutral-500 dark:text-[#B5B5B5]">
                   {cart.length} {cart.length === 1 ? 'item' : 'items'}
                 </p>
@@ -46,13 +55,21 @@ export function CartDrawer() {
                 const itemKey = item.selectedDuration?.key ? `${id}::${item.selectedDuration.key}` : id;
                 const { current: unitPrice, original: unitOriginal, currency: itemCurrency } = unitDisplayPrice(item, item.selectedDuration, currency);
                 const unitSavings = Math.max(0, unitOriginal - unitPrice);
+                const isPte = item.voucherType === 'PTE-BOOKING' || item.category === 'PTE' || (item.name || '').toLowerCase().includes('pte');
                 return (
                   <div key={itemKey} className="bg-[#FFF0F5] dark:bg-[#2A0A17] p-4 rounded-2xl border border-brand-pink/20 flex items-center justify-between gap-3 group hover:bg-white dark:hover:bg-[#161616] transition-all duration-200">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-100 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                          Save {formatPrice(unitSavings, itemCurrency)}
-                        </span>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        {isPte ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-lg bg-[#FF005C]/10 border border-[#FF005C]/30 text-[10px] font-extrabold text-[#FF005C] uppercase tracking-wider">
+                            EXAM BOOKING SERVICE
+                          </span>
+                        ) : null}
+                        {unitSavings > 0 && (
+                          <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-100 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                            Save {formatPrice(unitSavings, itemCurrency)}
+                          </span>
+                        )}
                       </div>
                       <h4 className="font-heading font-extrabold text-sm text-neutral-900 dark:text-white leading-snug mb-1 line-clamp-2">
                         {item.name}
@@ -128,7 +145,11 @@ export function CartDrawer() {
 
             <p className="text-center text-[11px] font-bold text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-1.5">
               <Ticket className="w-3.5 h-3.5 text-brand-pink" strokeWidth={2.5} />
-              Codes delivered instantly to your email
+              {hasPteBookingItems && !hasVoucherItems
+                ? 'Dedicated Pearson PTE booking assistance • No voucher code included'
+                : hasPteBookingItems && hasVoucherItems
+                  ? 'Instant delivery for vouchers • Dedicated assistance for PTE bookings'
+                  : 'Codes delivered instantly to your email'}
             </p>
           </div>
         )}

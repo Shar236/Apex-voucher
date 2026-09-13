@@ -1667,11 +1667,12 @@ export const sendPasswordReset = (user, token) => {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * Customer Confirmation: PTE Booking Assistance Request Received.
+ * Customer Confirmation: Payment Received for PTE Booking Request.
  */
 export const sendPTEBookingConfirmationToCustomer = (booking) => {
-  const subject = `PTE Booking Assistance Request Received — ${booking.requestId}`;
-  const preheader = `We received your PTE booking assistance request (${booking.requestId}). Our team will contact you shortly.`;
+  const clientUrl = getClientUrl();
+  const subject = `Payment Received — PTE Booking Request ${booking.requestId}`;
+  const preheader = `Your payment has been received successfully. Your PTE booking request has been submitted to our team for processing.`;
   const dateStr = booking.preferredDate ? formatDate(booking.preferredDate) : 'Flexible';
 
   const bodyHtml = `
@@ -1680,44 +1681,79 @@ export const sendPTEBookingConfirmationToCustomer = (booking) => {
     </h1>
 
     <p style="font-size: 14px; line-height: 1.65; color: ${BRAND_COLORS.bodyText}; margin: 0 0 18px 0;">
-      Thank you for requesting PTE exam booking assistance from <strong>${escapeHtml(config.business.name)}</strong>. We have received your details and our booking specialist will contact you shortly to confirm your preferred exam slot.
+      Your payment has been received successfully. Your PTE booking request has been submitted to our team for processing.
     </p>
 
+    <div style="background-color: ${BRAND_COLORS.warningBg}; border: 1px solid ${BRAND_COLORS.warningBorder}; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: ${BRAND_COLORS.warningText}; line-height: 1.55;">
+      <strong>⚠️ Important Notice:</strong><br />
+      Your exam is <strong>NOT</strong> considered booked until our team processes and confirms the booking with official Pearson appointment details.<br />
+      <em>This payment is for PTE exam booking assistance only. No voucher, voucher code, or voucher credit is included.</em>
+    </div>
+
     ${renderStatusCard({
-      status: booking.status || 'RECEIVED',
-      title: 'Booking Assistance In Progress',
-      description: 'Our team is reviewing centre availability based on your preferences. We will reach out via WhatsApp or phone.',
+      status: booking.status || 'Payment Received',
+      title: 'Booking Request Under Team Review',
+      description: 'Our booking specialists are reviewing live Pearson test centre slots according to your preferences.',
       variant: 'info',
     })}
 
     <div style="background-color: ${BRAND_COLORS.pageBg}; border: 1px solid ${BRAND_COLORS.cardBorder}; border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: ${BRAND_COLORS.mutedText}; letter-spacing: 0.8px; margin-bottom: 12px;">
+        PAYMENT & REQUEST DETAILS
+      </div>
       <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
           <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Request ID:</td>
           <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 7px; font-family: 'Courier New', monospace;">${escapeHtml(booking.requestId)}</td>
         </tr>
+        ${booking.orderNo ? `
         <tr>
-          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Exam Type:</td>
-          <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">${escapeHtml(booking.examType)}</td>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Order Number:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">#${escapeHtml(booking.orderNo)}</td>
+        </tr>` : ''}
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">PTE Service:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.pink}; padding-bottom: 7px;">${escapeHtml(booking.examType)}</td>
         </tr>
+        ${booking.amountPaid ? `
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Amount Paid:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">${escapeHtml(booking.currency || 'INR')} ${escapeHtml(String(booking.amountPaid))}</td>
+        </tr>` : ''}
+        ${booking.paymentId ? `
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Payment ID:</td>
+          <td align="right" style="font-size: 12px; font-family: monospace; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">${escapeHtml(booking.paymentId)}</td>
+        </tr>` : ''}
         <tr>
           <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred City:</td>
-          <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.preferredCity)}</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.preferredCity || 'Flexible')}</td>
         </tr>
         <tr>
           <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred Date:</td>
           <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(dateStr)}</td>
         </tr>
         <tr>
-          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText};">Status:</td>
-          <td align="right" style="font-size: 12px; font-weight: 800; color: ${BRAND_COLORS.infoText};">${escapeHtml(booking.status || 'Pending Review')}</td>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred Time Slot:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.preferredTime || 'Any Time')}</td>
         </tr>
+        ${booking.preferredTestCentre ? `
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred Test Centre:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.preferredTestCentre)}</td>
+        </tr>` : ''}
+        ${booking.message ? `
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-top: 6px; border-top: 1px solid ${BRAND_COLORS.cardBorder};">Notes:</td>
+          <td align="right" style="font-size: 13px; font-weight: 500; color: ${BRAND_COLORS.bodyText}; padding-top: 6px; border-top: 1px solid ${BRAND_COLORS.cardBorder};">${escapeHtml(booking.message)}</td>
+        </tr>` : ''}
       </table>
     </div>
 
-    <div style="background-color: ${BRAND_COLORS.warningBg}; border: 1px solid ${BRAND_COLORS.warningBorder}; border-radius: 10px; padding: 14px 18px; font-size: 12px; color: ${BRAND_COLORS.warningText}; line-height: 1.5;">
-      ℹ️ This is a booking assistance request, not an automatic exam booking confirmation. Our team will verify live Pearson slot availability with you directly.
-    </div>
+    ${renderCtaButton({
+      label: 'View Booking Request in Account →',
+      url: `${clientUrl}/account?tab=pte-bookings`,
+    })}
 
     ${renderSupportSection()}
   `;
@@ -1730,7 +1766,7 @@ export const sendPTEBookingConfirmationToCustomer = (booking) => {
       title: subject,
       preheader,
       body: bodyHtml,
-      brandBadge: 'PTE Booking',
+      brandBadge: 'PTE Booking Request',
     }),
   });
 };
@@ -1739,28 +1775,54 @@ export const sendPTEBookingConfirmationToCustomer = (booking) => {
  * Customer Notification: Status Changed for PTE Booking Request.
  */
 export const sendPTEBookingStatusUpdateToCustomer = (booking, newStatus, note = '', confirmationDetails = null) => {
-  const subject = `PTE Booking Status Update: ${newStatus} — ${booking.requestId}`;
-  const preheader = `Your PTE booking request ${booking.requestId} has been updated to: ${newStatus}.`;
-
+  const clientUrl = getClientUrl();
   const isConfirmed = newStatus === 'Booking Confirmed' || newStatus === 'Completed';
-  const isCancelled = newStatus === 'Cancelled' || newStatus === 'Rejected';
-  const variant = isConfirmed ? 'success' : isCancelled ? 'alert' : 'info';
+  const isFailed = newStatus === 'Booking Failed / Unable to Book';
+  const isCancelled = newStatus === 'Cancelled / Refund Required' || newStatus === 'Cancelled' || newStatus === 'Rejected';
+  const variant = isConfirmed ? 'success' : isFailed || isCancelled ? 'alert' : 'info';
+
+  const subject = isConfirmed
+    ? `🎉 Official Booking Confirmation — ${booking.examType} (${booking.requestId})`
+    : `PTE Booking Status Update: ${newStatus} — ${booking.requestId}`;
+
+  const preheader = isConfirmed
+    ? `Your PTE exam has been officially booked and confirmed! Review your appointment details.`
+    : `Your PTE booking request ${booking.requestId} status has been updated to: ${newStatus}.`;
 
   let confirmationBlock = '';
   if (isConfirmed && confirmationDetails && (confirmationDetails.bookingReference || confirmationDetails.confirmedCentre)) {
     confirmationBlock = `
       <div style="background-color: ${BRAND_COLORS.successBg}; border: 1px solid ${BRAND_COLORS.successBorder}; border-radius: 14px; padding: 20px; margin-bottom: 20px;">
         <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: ${BRAND_COLORS.successText}; letter-spacing: 0.8px; margin-bottom: 12px;">
-          OFFICIAL APPOINTMENT CONFIRMATION
+          OFFICIAL PEARSON APPOINTMENT CONFIRMATION
         </div>
         <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-          ${confirmationDetails.bookingReference ? `<tr><td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 6px;">Booking Reference:</td><td align="right" style="font-size: 13px; font-weight: 800; color: ${BRAND_COLORS.dark}; padding-bottom: 6px;">${escapeHtml(confirmationDetails.bookingReference)}</td></tr>` : ''}
+          ${confirmationDetails.bookingReference ? `<tr><td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 6px;">Booking Reference:</td><td align="right" style="font-size: 14px; font-weight: 800; color: ${BRAND_COLORS.dark}; padding-bottom: 6px; font-family: monospace;">${escapeHtml(confirmationDetails.bookingReference)}</td></tr>` : ''}
           ${confirmationDetails.confirmedCentre ? `<tr><td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 6px;">Test Centre:</td><td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 6px;">${escapeHtml(confirmationDetails.confirmedCentre)}</td></tr>` : ''}
           ${confirmationDetails.confirmedCity ? `<tr><td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 6px;">City:</td><td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 6px;">${escapeHtml(confirmationDetails.confirmedCity)}</td></tr>` : ''}
           ${confirmationDetails.confirmedDate ? `<tr><td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 6px;">Confirmed Date:</td><td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.successText}; padding-bottom: 6px;">${formatDate(confirmationDetails.confirmedDate)}</td></tr>` : ''}
           ${confirmationDetails.confirmedTime ? `<tr><td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 6px;">Confirmed Time:</td><td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.successText}; padding-bottom: 6px;">${escapeHtml(confirmationDetails.confirmedTime)}</td></tr>` : ''}
-          ${confirmationDetails.importantInstructions ? `<tr><td colspan="2" style="font-size: 12px; color: ${BRAND_COLORS.bodyText}; padding-top: 10px; border-top: 1px solid ${BRAND_COLORS.successBorder};"><strong>Instructions:</strong> ${escapeHtml(confirmationDetails.importantInstructions)}</td></tr>` : ''}
+          ${confirmationDetails.importantInstructions ? `<tr><td colspan="2" style="font-size: 12px; color: ${BRAND_COLORS.bodyText}; padding-top: 10px; border-top: 1px solid ${BRAND_COLORS.successBorder};"><strong>Exam Day Instructions:</strong><br />${escapeHtml(confirmationDetails.importantInstructions)}</td></tr>` : ''}
         </table>
+      </div>
+
+      <div style="background-color: ${BRAND_COLORS.subtleBg}; border-left: 3px solid ${BRAND_COLORS.pink}; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: ${BRAND_COLORS.bodyText}; line-height: 1.5;">
+        <strong>Important:</strong> Please bring your original valid passport (or accepted government ID exactly matching your booking details) to the test centre. Arrive at least 30 minutes before your scheduled appointment time.
+      </div>
+    `;
+  }
+
+  let edgeCaseBlock = '';
+  if (isFailed) {
+    edgeCaseBlock = `
+      <div style="background-color: ${BRAND_COLORS.warningBg}; border: 1px solid ${BRAND_COLORS.warningBorder}; border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 13px; color: ${BRAND_COLORS.warningText}; line-height: 1.55;">
+        <strong>Booking Update:</strong> We were unable to secure your requested appointment with the test centre at this time. Our support team is actively reviewing alternate date and centre options with you or processing a full refund if preferred.
+      </div>
+    `;
+  } else if (isCancelled) {
+    edgeCaseBlock = `
+      <div style="background-color: ${BRAND_COLORS.subtleBg}; border: 1px solid ${BRAND_COLORS.cardBorder}; border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 13px; color: ${BRAND_COLORS.bodyText}; line-height: 1.55;">
+        <strong>Request Cancelled:</strong> This PTE booking assistance request has been cancelled. If a refund is due, it will be credited back to your original payment method. Contact our support team if you have any questions.
       </div>
     `;
   }
@@ -1771,24 +1833,32 @@ export const sendPTEBookingStatusUpdateToCustomer = (booking, newStatus, note = 
     </h1>
 
     <p style="font-size: 14px; line-height: 1.65; color: ${BRAND_COLORS.bodyText}; margin: 0 0 18px 0;">
-      Your PTE exam booking assistance request has been updated.
+      ${isConfirmed
+        ? 'Great news! Your PTE exam appointment has been officially confirmed by our team.'
+        : `Your PTE exam booking assistance request ${escapeHtml(booking.requestId)} has been updated.`}
     </p>
 
     ${renderStatusCard({
       status: newStatus,
-      title: `Status: ${newStatus}`,
+      title: isConfirmed ? 'Booking Confirmed' : `Status: ${newStatus}`,
       description: isConfirmed
-        ? 'Your exam appointment has been successfully scheduled!'
-        : `Your booking request is now ${newStatus}.`,
+        ? 'Your Pearson appointment is locked in. Review your appointment details below.'
+        : `Your booking request status is now: ${newStatus}.`,
       variant,
     })}
 
     ${confirmationBlock}
+    ${edgeCaseBlock}
 
     ${note ? `
     <div style="background-color: ${BRAND_COLORS.subtleBg}; border-left: 3px solid ${BRAND_COLORS.pink}; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: ${BRAND_COLORS.bodyText};">
       <strong>Special Note from Team:</strong> ${escapeHtml(note)}
     </div>` : ''}
+
+    ${renderCtaButton({
+      label: 'View Booking in Account →',
+      url: `${clientUrl}/account?tab=pte-bookings`,
+    })}
 
     ${renderSupportSection()}
   `;
@@ -1808,12 +1878,12 @@ export const sendPTEBookingStatusUpdateToCustomer = (booking, newStatus, note = 
 };
 
 /**
- * Internal Admin Notification: New PTE Booking Assistance Request.
+ * Internal Admin Notification: New Paid PTE Booking Assistance Request.
  */
 export const sendPTEBookingAdminNotification = (booking) => {
   const clientUrl = getClientUrl();
-  const subject = `New PTE Booking Assistance Request — ${booking.requestId}`;
-  const preheader = `New student request: ${booking.fullName} requested assistance for ${booking.examType} in ${booking.preferredCity}.`;
+  const subject = `New Paid PTE Booking Request — ${booking.requestId} (${booking.fullName})`;
+  const preheader = `New booking request: ${booking.fullName} paid ${booking.currency || 'INR'} ${booking.amountPaid || '—'} for ${booking.examType}.`;
   const dateStr = booking.preferredDate ? formatDate(booking.preferredDate) : 'Flexible';
 
   const bodyHtml = `
@@ -1822,13 +1892,16 @@ export const sendPTEBookingAdminNotification = (booking) => {
     </h1>
 
     <p style="font-size: 14px; line-height: 1.6; color: ${BRAND_COLORS.bodyText}; margin: 0 0 18px 0;">
-      A student candidate has requested assistance booking their PTE examination slot.
+      A customer has completed payment for PTE examination booking assistance. Please review and arrange the official Pearson slot.
     </p>
 
     <div style="background-color: ${BRAND_COLORS.pageBg}; border: 1px solid ${BRAND_COLORS.cardBorder}; border-radius: 14px; padding: 20px; margin-bottom: 22px;">
+      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: ${BRAND_COLORS.mutedText}; letter-spacing: 0.8px; margin-bottom: 12px;">
+        CANDIDATE & BOOKING SUMMARY
+      </div>
       <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
-          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Candidate:</td>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Customer Name:</td>
           <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">${escapeHtml(booking.fullName)}</td>
         </tr>
         <tr>
@@ -1840,12 +1913,34 @@ export const sendPTEBookingAdminNotification = (booking) => {
           <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.phone)}</td>
         </tr>
         <tr>
-          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Exam Type:</td>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">PTE Service:</td>
           <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">${escapeHtml(booking.examType)}</td>
         </tr>
         <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Amount Paid:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: ${BRAND_COLORS.successText}; padding-bottom: 7px;">${escapeHtml(booking.currency || 'INR')} ${escapeHtml(String(booking.amountPaid || '—'))}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Payment Status:</td>
+          <td align="right" style="font-size: 12px; font-weight: 800; color: ${BRAND_COLORS.successText}; padding-bottom: 7px;">${escapeHtml(booking.paymentStatus || 'PAID')}</td>
+        </tr>
+        ${booking.paymentId ? `
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Razorpay Payment ID:</td>
+          <td align="right" style="font-size: 12px; font-family: monospace; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">${escapeHtml(booking.paymentId)}</td>
+        </tr>` : ''}
+        ${booking.orderNo ? `
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Order Number:</td>
+          <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">#${escapeHtml(booking.orderNo)}</td>
+        </tr>` : ''}
+        <tr>
           <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred City:</td>
           <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; padding-bottom: 7px;">${escapeHtml(booking.preferredCity)}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred Test Centre:</td>
+          <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.preferredTestCentre || 'Any Available Centre')}</td>
         </tr>
         <tr>
           <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred Date:</td>
@@ -1855,6 +1950,11 @@ export const sendPTEBookingAdminNotification = (booking) => {
           <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Preferred Time:</td>
           <td align="right" style="font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.preferredTime || 'Any Time')}</td>
         </tr>
+        ${booking.message ? `
+        <tr>
+          <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText}; padding-bottom: 7px;">Customer Notes:</td>
+          <td align="right" style="font-size: 13px; font-weight: 500; color: ${BRAND_COLORS.bodyText}; padding-bottom: 7px;">${escapeHtml(booking.message)}</td>
+        </tr>` : ''}
         <tr>
           <td style="font-size: 13px; color: ${BRAND_COLORS.mutedText};">Request ID:</td>
           <td align="right" style="font-size: 13px; font-weight: 700; color: ${BRAND_COLORS.dark}; font-family: 'Courier New', monospace;">${escapeHtml(booking.requestId)}</td>

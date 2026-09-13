@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Crown,
@@ -38,7 +38,7 @@ import { useAuth } from '@/components/auth-provider';
 import { useVoucher } from '@/components/voucher-provider';
 import { useCart } from '@/components/cart-provider';
 import { ApexLogo } from '@/components/apex-logo';
-import { accountApi, apiBase } from '@/lib/api';
+import { accountApi, apiBase, pteBookingApi } from '@/lib/api';
 import { PasswordStrengthChecklist } from '@/components/auth/password-strength-checklist';
 import { validatePasswordStrength } from '@/lib/password-rules';
 import { AccountInfoCard, VerifiedBadge, ReadOnlyRow, Field, PasswordField, OrderRow, VoucherMini, EmptyState, Modal, statusColor, VR_STATUS_META, formatDate } from '@/components/account/helpers';
@@ -47,6 +47,7 @@ const TABS = [
   { id: 'overview', label: 'Overview', icon: Crown, mobileLabel: 'Overview' },
   { id: 'profile', label: 'Personal Information', icon: UserIcon, mobileLabel: 'Profile' },
   { id: 'orders', label: 'My Orders', icon: ClipboardList, mobileLabel: 'Orders' },
+  { id: 'pte-bookings', label: 'PTE Bookings', icon: Calendar, mobileLabel: 'PTE' },
   { id: 'vouchers', label: 'My Vouchers', icon: Ticket, mobileLabel: 'Vouchers' },
   { id: 'preparing', label: 'Preparing Vouchers', icon: Clock, mobileLabel: 'Preparing' },
   { id: 'security', label: 'Security', icon: Shield, mobileLabel: 'Security' },
@@ -89,6 +90,62 @@ export function AccountDashboard() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [showCurrentPwd, setShowCurrentPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
+
+  const [pteBookings, setPteBookings] = useState<
+    Array<{
+      _id: string;
+      requestId?: string;
+      orderNo?: string;
+      examType?: string;
+      amountPaid?: number;
+      currency?: string;
+      paymentStatus?: string;
+      status?: string;
+      preferredCity?: string;
+      preferredTestCentre?: string;
+      preferredDate?: string;
+      preferredTime?: string;
+      message?: string;
+      createdAt?: string;
+      confirmationDetails?: {
+        bookingReference?: string;
+        confirmedCentre?: string;
+        confirmedCity?: string;
+        confirmedDate?: string;
+        confirmedTime?: string;
+        importantInstructions?: string;
+      };
+    }>
+  >([]);
+  const [pteBookingsLoading, setPteBookingsLoading] = useState(false);
+  const [pteBookingsError, setPteBookingsError] = useState('');
+
+  const loadPteBookings = useCallback(async () => {
+    setPteBookingsLoading(true);
+    setPteBookingsError('');
+    try {
+      const res = await pteBookingApi.mine();
+      if (res?.success) {
+        setPteBookings((res.data as typeof pteBookings) || []);
+      } else {
+        setPteBookingsError((res?.message as string) || 'Failed to load PTE booking requests.');
+      }
+    } catch {
+      setPteBookingsError('Could not load PTE booking requests.');
+    } finally {
+      setPteBookingsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPteBookings();
+  }, [loadPteBookings]);
+
+  useEffect(() => {
+    if (tab === 'pte-bookings') {
+      loadPteBookings();
+    }
+  }, [tab, loadPteBookings]);
 
   useEffect(() => {
     if (user) setProfileName(user.name || '');
@@ -385,6 +442,34 @@ export function AccountDashboard() {
                   );
                 })()}
 
+                {(() => {
+                  const activePte = pteBookings.filter(
+                    (b) => b.status !== 'Booking Confirmed' && b.status !== 'Cancelled / Refund Required'
+                  );
+                  if (activePte.length === 0) return null;
+                  return (
+                    <button
+                      onClick={() => setTab('pte-bookings')}
+                      className="w-full text-left mb-4 rounded-3xl p-5 bg-[#FF005C]/5 border border-[#FF005C]/25 hover:border-[#FF005C]/50 transition-colors cursor-pointer flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#FF005C]/10 text-[#FF005C] flex items-center justify-center shrink-0">
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-black text-sm text-neutral-900 dark:text-white">
+                            {activePte.length} PTE exam booking {activePte.length === 1 ? 'request' : 'requests'} in progress
+                          </p>
+                          <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">
+                            Payment verified • Our team is processing your Pearson booking details
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-[#FF005C] shrink-0" />
+                    </button>
+                  );
+                })()}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-2 rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
                     <div className="flex items-center justify-between mb-4">
@@ -427,6 +512,224 @@ export function AccountDashboard() {
                     <OrderRow key={o._id} o={o} detailed />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {tab === 'pte-bookings' && (
+              <div className="rounded-3xl p-5 sm:p-6 bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2.5 py-0.5 rounded-full border border-[#FF005C]/30 bg-[#FF005C]/10 text-[10px] font-black text-[#FF005C] uppercase tracking-wider">
+                        EXAM BOOKING SERVICE
+                      </span>
+                    </div>
+                    <h3 className="font-black text-xl text-neutral-900 dark:text-white">PTE Exam Bookings</h3>
+                    <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 mt-0.5">
+                      Track Pearson PTE exam booking assistance requests and view confirmed appointment details.
+                    </p>
+                  </div>
+                  <button
+                    onClick={loadPteBookings}
+                    disabled={pteBookingsLoading}
+                    className="px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] hover:border-brand-pink text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RotateCcw className={`w-4 h-4 ${pteBookingsLoading ? 'animate-spin' : ''}`} /> Refresh
+                  </button>
+                </div>
+
+                {pteBookingsLoading && pteBookings.length === 0 ? (
+                  <div className="text-center py-12 space-y-3">
+                    <Loader2 className="w-8 h-8 text-brand-pink animate-spin mx-auto" />
+                    <p className="text-xs font-bold text-neutral-500">Loading your booking requests…</p>
+                  </div>
+                ) : pteBookingsError ? (
+                  <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 text-xs font-bold text-rose-700">
+                    {pteBookingsError}
+                  </div>
+                ) : pteBookings.length === 0 ? (
+                  <EmptyState
+                    icon={<Calendar className="w-7 h-7 text-neutral-400" />}
+                    title="No PTE booking requests yet"
+                    desc="When you request PTE exam booking assistance, your request details and official appointment confirmation will appear here."
+                  />
+                ) : (
+                  <div className="space-y-5">
+                    {pteBookings.map((b) => {
+                      const isConfirmed = b.status === 'Booking Confirmed';
+                      const isFailed = b.status === 'Booking Failed / Unable to Book' || b.status === 'Cancelled / Refund Required';
+                      const cd = b.confirmationDetails;
+
+                      return (
+                        <div
+                          key={b._id}
+                          className="rounded-2xl p-5 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] space-y-4"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200/60 dark:border-[#202020] pb-3">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-neutral-200/80 dark:bg-[#222] text-[#FF005C]">
+                                {b.requestId || b.orderNo || 'REQUEST'}
+                              </span>
+                              <span className="font-black text-neutral-900 dark:text-white text-sm">
+                                {b.examType || 'PTE Academic'}
+                              </span>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${
+                                  isConfirmed
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                    : isFailed
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400'
+                                      : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400'
+                                }`}
+                              >
+                                {isConfirmed
+                                  ? 'Confirmed'
+                                  : isFailed
+                                    ? b.status
+                                    : 'Processing / Pending Confirmation'}
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-neutral-400">
+                              Requested {b.createdAt ? formatDate(b.createdAt) : '—'}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                            <div>
+                              <span className="text-[10px] uppercase text-neutral-400 block">Order Number</span>
+                              <span className="text-neutral-900 dark:text-white">#{b.orderNo || '—'}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase text-neutral-400 block">Amount Paid</span>
+                              <span className="text-neutral-900 dark:text-white">
+                                {b.amountPaid != null ? formatPrice(b.amountPaid, (b.currency as 'INR' | 'USD') || 'INR') : '—'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase text-neutral-400 block">Payment Status</span>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">Paid</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase text-neutral-400 block">Booking Status</span>
+                              <span
+                                className={`font-bold ${
+                                  isConfirmed
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : isFailed
+                                      ? 'text-rose-600 dark:text-rose-400'
+                                      : 'text-amber-600 dark:text-amber-400'
+                                }`}
+                              >
+                                {isConfirmed ? 'Confirmed' : isFailed ? b.status : 'Processing / Pending Confirmation'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-xs space-y-2">
+                            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-extrabold block">
+                              Requested Booking Preferences
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-neutral-700 dark:text-neutral-300 font-medium">
+                              <div>
+                                <span className="text-neutral-400 text-[11px] block">City:</span>
+                                <span className="font-bold text-neutral-900 dark:text-white">{b.preferredCity || 'Not specified'}</span>
+                              </div>
+                              <div>
+                                <span className="text-neutral-400 text-[11px] block">Test Centre:</span>
+                                <span className="font-bold text-neutral-900 dark:text-white">{b.preferredTestCentre || 'Any Test Centre'}</span>
+                              </div>
+                              <div>
+                                <span className="text-neutral-400 text-[11px] block">Date:</span>
+                                <span className="font-bold text-neutral-900 dark:text-white">{b.preferredDate ? formatDate(b.preferredDate) : 'Flexible'}</span>
+                              </div>
+                              <div>
+                                <span className="text-neutral-400 text-[11px] block">Time Slot:</span>
+                                <span className="font-bold text-neutral-900 dark:text-white">{b.preferredTime || 'Any Time'}</span>
+                              </div>
+                            </div>
+                            {b.message && (
+                              <div className="pt-1 text-[11px] text-neutral-500 border-t border-neutral-100 dark:border-neutral-800">
+                                <span className="font-semibold text-neutral-700 dark:text-neutral-300">Notes: </span>
+                                {b.message}
+                              </div>
+                            )}
+                          </div>
+
+                          {isConfirmed && cd ? (
+                            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
+                              <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>Official Pearson PTE Appointment Confirmed</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3.5 rounded-xl bg-white dark:bg-[#161616] border border-[#EAEAEA] dark:border-[#292929] text-xs">
+                                <div>
+                                  <span className="text-[10px] uppercase text-neutral-400 block font-bold">Booking Reference</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="font-mono font-black text-sm text-[#FF005C] select-all">
+                                      {cd.bookingReference || '—'}
+                                    </span>
+                                    {cd.bookingReference && (
+                                      <button
+                                        onClick={() => copy(b._id, cd.bookingReference as string)}
+                                        className="p-1 rounded bg-neutral-100 dark:bg-[#222] text-neutral-500 hover:text-ink cursor-pointer"
+                                        title="Copy reference"
+                                      >
+                                        {copiedId === b._id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase text-neutral-400 block font-bold">Test Centre</span>
+                                  <span className="font-bold text-neutral-900 dark:text-white block mt-0.5">
+                                    {cd.confirmedCentre || '—'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase text-neutral-400 block font-bold">City</span>
+                                  <span className="font-bold text-neutral-900 dark:text-white block mt-0.5">
+                                    {cd.confirmedCity || b.preferredCity || '—'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase text-neutral-400 block font-bold">Exam Date</span>
+                                  <span className="font-bold text-neutral-900 dark:text-white block mt-0.5">
+                                    {cd.confirmedDate ? formatDate(cd.confirmedDate) : '—'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase text-neutral-400 block font-bold">Exam Time</span>
+                                  <span className="font-bold text-neutral-900 dark:text-white block mt-0.5">
+                                    {cd.confirmedTime || '—'}
+                                  </span>
+                                </div>
+                              </div>
+                              {cd.importantInstructions && (
+                                <div className="p-3 rounded-lg bg-emerald-100/50 dark:bg-emerald-900/30 text-xs text-emerald-900 dark:text-emerald-200">
+                                  <span className="font-bold block mb-0.5">Important Instructions:</span>
+                                  <p className="whitespace-pre-line leading-relaxed font-normal">{cd.importantInstructions}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : isFailed ? (
+                            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-700 dark:text-rose-300">
+                              {b.status === 'Cancelled / Refund Required'
+                                ? 'This booking request was cancelled. If you are eligible for a refund, our support team will process it to your original payment method.'
+                                : 'Our team was unable to complete this booking. A representative will contact you with alternative options or a full refund.'}
+                            </div>
+                          ) : (
+                            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                              <Clock className="w-4 h-4 shrink-0 text-amber-600" />
+                              <span>
+                                Payment Received • Booking in Progress — Our team is actively processing your booking with Pearson. Your exam is NOT confirmed until our team enters and confirms the official appointment.
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 

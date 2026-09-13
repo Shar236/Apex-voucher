@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import confetti from 'canvas-confetti';
-import { X, ShieldCheck, Lock, CheckCircle2, QrCode, CreditCard, Sparkles, ArrowRight, Copy, Check, AlertCircle, ExternalLink, LogIn, Mail } from 'lucide-react';
+import { X, ShieldCheck, Lock, CheckCircle2, QrCode, CreditCard, Sparkles, ArrowRight, Copy, Check, AlertCircle, ExternalLink, LogIn, Mail, Calendar, Info } from 'lucide-react';
 import { ApexLogo } from '@/components/apex-logo';
 import { useAuth } from '@/components/auth-provider';
 import { useCart } from '@/components/cart-provider';
@@ -91,6 +91,13 @@ export function CheckoutModal() {
   const [authError, setAuthError] = useState('');
 
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+  const [bookingPrefs, setBookingPrefs] = useState({
+    preferredCity: '',
+    preferredTestCentre: '',
+    preferredDate: '',
+    preferredTime: 'Any Time',
+    message: '',
+  });
 
   const paymentHandledRef = useRef(false);
 
@@ -99,6 +106,17 @@ export function CheckoutModal() {
     if (Array.isArray(checkoutProduct)) return checkoutProduct;
     return [{ ...checkoutProduct, quantity: checkoutProduct.quantity || 1 }];
   }, [checkoutProduct]);
+
+  const isPteBooking = useMemo(
+    () =>
+      checkoutItems.some(
+        (it) =>
+          it.voucherType === 'PTE-BOOKING' ||
+          it.category === 'PTE' ||
+          (it.name || '').toLowerCase().includes('pte')
+      ),
+    [checkoutItems]
+  );
 
   useEffect(() => {
     if (!isCheckoutOpen) return;
@@ -271,6 +289,7 @@ export function CheckoutModal() {
       paymentMethod,
       billing: { ...formData, email: formData.email || user?.email },
       ...(voucherRequestId ? { voucherRequestId } : {}),
+      ...(isPteBooking ? { bookingPreferences: bookingPrefs } : {}),
     };
 
     let createRes: ApiResponse;
@@ -507,6 +526,19 @@ export function CheckoutModal() {
             )}
 
             <form onSubmit={handlePaymentSubmit} className="space-y-4">
+              {isPteBooking && (
+                <div className="p-3.5 rounded-2xl bg-[#FFF5F7] dark:bg-[#FF005C]/10 border border-[#FFE0E8] dark:border-[#FF005C]/20 text-xs text-neutral-700 dark:text-neutral-200 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#FF005C] text-white text-[10px] uppercase tracking-wider font-bold">
+                      EXAM BOOKING SERVICE
+                    </span>
+                  </div>
+                  <p className="text-xs font-normal leading-relaxed text-neutral-700 dark:text-neutral-200">
+                    This payment is for PTE exam booking assistance only. No voucher, voucher code, or voucher credit is included.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <MiniLabel>Full Candidate Name *</MiniLabel>
@@ -541,6 +573,70 @@ export function CheckoutModal() {
                     className="w-full px-4 py-3 rounded-xl bg-surface-raised border border-line text-sm font-normal focus:outline-none focus:border-accent transition-all"
                   />
                 </div>
+
+                {isPteBooking && (
+                  <div className="sm:col-span-2 pt-2 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-[#FF005C]" />
+                      <span className="text-xs font-bold text-ink uppercase tracking-wider">Exam Booking Preferences</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-surface-raised border border-line">
+                      <div>
+                        <MiniLabel>Preferred City</MiniLabel>
+                        <input
+                          type="text"
+                          placeholder="e.g. Mumbai, Bangalore, Delhi"
+                          value={bookingPrefs.preferredCity}
+                          onChange={(e) => setBookingPrefs({ ...bookingPrefs, preferredCity: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-normal focus:outline-none focus:border-accent"
+                        />
+                      </div>
+                      <div>
+                        <MiniLabel>Preferred Test Centre (Optional)</MiniLabel>
+                        <input
+                          type="text"
+                          placeholder="e.g. Pearson Professional Centre"
+                          value={bookingPrefs.preferredTestCentre}
+                          onChange={(e) => setBookingPrefs({ ...bookingPrefs, preferredTestCentre: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-normal focus:outline-none focus:border-accent"
+                        />
+                      </div>
+                      <div>
+                        <MiniLabel>Preferred Exam Date</MiniLabel>
+                        <input
+                          type="date"
+                          min={new Date().toISOString().slice(0, 10)}
+                          value={bookingPrefs.preferredDate}
+                          onChange={(e) => setBookingPrefs({ ...bookingPrefs, preferredDate: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-normal focus:outline-none focus:border-accent"
+                        />
+                      </div>
+                      <div>
+                        <MiniLabel>Preferred Time Slot</MiniLabel>
+                        <select
+                          value={bookingPrefs.preferredTime}
+                          onChange={(e) => setBookingPrefs({ ...bookingPrefs, preferredTime: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-normal focus:outline-none focus:border-accent"
+                        >
+                          <option value="Any Time">Any Time</option>
+                          <option value="Morning">Morning (09:00 - 12:00)</option>
+                          <option value="Afternoon">Afternoon (12:00 - 16:00)</option>
+                          <option value="Evening">Evening (16:00 - 20:00)</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <MiniLabel>Additional Notes or Instructions (Optional)</MiniLabel>
+                        <input
+                          type="text"
+                          placeholder="e.g. Urgent slot required or alternative date preference"
+                          value={bookingPrefs.message}
+                          onChange={(e) => setBookingPrefs({ ...bookingPrefs, message: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-normal focus:outline-none focus:border-accent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-1">
@@ -613,20 +709,28 @@ export function CheckoutModal() {
                     <span>
                       {processingState === 'creating' && 'Creating Secure Payment…'}
                       {processingState === 'opening' && 'Opening Secure Checkout…'}
-                      {processingState === 'verifying' && 'Verifying Payment & Issuing Voucher…'}
+                      {processingState === 'verifying' && (isPteBooking ? 'Verifying Payment & Submitting Booking Request…' : 'Verifying Payment & Issuing Voucher…')}
                       {processingState === 'idle' && 'Processing Payment…'}
                     </span>
                   ) : (
                     <>
                       <Lock className="w-5 h-5" />
-                      <span>Pay {formatPrice(finalPrice)} & Get Code Instantly</span>
-                      <ArrowRight className="w-5 h-5" />
+                      <span>
+                        {isPteBooking
+                          ? `Pay ${formatPrice(finalPrice)} & Submit Booking Request →`
+                          : `Pay ${formatPrice(finalPrice)} & Get Code Instantly`}
+                      </span>
+                      {!isPteBooking && <ArrowRight className="w-5 h-5" />}
                     </>
                   )}
                 </button>
                 <p className="text-center text-[11px] font-normal text-neutral-400 flex items-center justify-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Secure Payment • 100% Genuine Official Vouchers</span>
+                  <span>
+                    {isPteBooking
+                      ? 'Secure Payment • Dedicated Pearson Exam Booking Assistance'
+                      : 'Secure Payment • 100% Genuine Official Vouchers'}
+                  </span>
                 </p>
               </div>
             </form>
@@ -634,6 +738,98 @@ export function CheckoutModal() {
         ) : (
           (() => {
             const emailSent = completedOrder?.emailStatus === 'SENT';
+
+            if (isPteBooking) {
+              return (
+                <div className="text-center space-y-6 py-4">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-success flex items-center justify-center mx-auto shadow-md">
+                    <CheckCircle2 className="w-10 h-10" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium uppercase tracking-widest text-[#FF005C] block mb-1">
+                      ORDER # {completedOrder?.orderNo || 'SUCCESSFUL'}
+                    </span>
+                    <h2 className="font-heading font-medium text-3xl">Payment Successful</h2>
+                    <p className="text-base font-semibold text-neutral-800 dark:text-neutral-100 mt-1">
+                      Your PTE booking request has been received.
+                    </p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mt-2 max-w-md mx-auto leading-relaxed">
+                      Your payment has been received successfully. Our team will now process your booking request. Your exam is NOT confirmed until our team completes and confirms the booking.
+                    </p>
+
+                    <div className="mt-4 p-4 rounded-2xl bg-surface-raised border border-line max-w-sm mx-auto text-left space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-neutral-500">Service:</span>
+                        <span className="font-bold text-neutral-900 dark:text-white">
+                          {checkoutItems[0]?.name || 'PTE Exam Booking Assistance'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-neutral-500">Order Number:</span>
+                        <span className="font-bold text-neutral-900 dark:text-white">
+                          {completedOrder?.orderNo || '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-neutral-500">Amount Paid:</span>
+                        <span className="font-bold text-neutral-900 dark:text-white">
+                          {formatPrice(finalPrice)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-neutral-500">Payment Status:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">Paid</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-neutral-500">Booking Status:</span>
+                        <span className="font-bold text-amber-600 dark:text-amber-400">
+                          Processing / Pending Confirmation
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`mt-4 text-xs font-normal rounded-xl py-2 px-3 inline-flex items-center gap-1.5 ${
+                        emailSent
+                          ? 'text-success bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40'
+                          : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40'
+                      }`}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      {emailSent ? (
+                        <span>
+                          Acknowledgment sent to <span className="underline">{formData.email || user?.email}</span>
+                        </span>
+                      ) : (
+                        <span>Your booking request is safely saved in your account.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        handleClose();
+                        router.push('/account?tab=pte-bookings');
+                      }}
+                      className="w-full bg-[#FF005C] hover:bg-[#E00052] text-white py-3.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                    >
+                      <span>View Booking Request in Account →</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleClose();
+                        router.push('/account?tab=orders');
+                      }}
+                      className="w-full bg-surface-raised text-ink py-2.5 rounded-xl text-xs font-medium border border-line hover:border-accent transition-colors cursor-pointer"
+                    >
+                      View Order Details
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             const pendingFulfillment =
               completedOrder?.fulfillmentStatus === 'PROCESSING' || completedOrder?.orderStatus === 'PROCESSING' || !!completedOrder?.pendingFulfillment;
             const needsAllocation = pendingFulfillment || (completedVouchers.length === 0 && completedOrder?.paymentStatus === 'PAID');

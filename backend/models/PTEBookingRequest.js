@@ -3,12 +3,18 @@ import mongoose from 'mongoose';
 export const PTE_EXAM_TYPES = ['PTE Academic', 'PTE Core', 'PTE Academic UKVI'];
 
 export const PTE_BOOKING_STATUSES = [
+  'Payment Received',
+  'Booking Request Pending',
+  'Processing Booking',
+  'Booking Confirmed',
+  'Booking Failed / Unable to Book',
+  'Cancelled / Refund Required',
+  // Legacy / existing compatibility
   'New',
   'Contacted',
   'Processing',
   'Booking In Progress',
   'Waiting for Customer',
-  'Booking Confirmed',
   'Completed',
   'Cancelled',
   'Rejected',
@@ -52,6 +58,42 @@ const pteBookingRequestSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Order',
+      default: null,
+      index: true,
+    },
+    orderNo: {
+      type: String,
+      default: '',
+      trim: true,
+      index: true,
+    },
+    amountPaid: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    currency: {
+      type: String,
+      default: 'INR',
+    },
+    paymentId: {
+      type: String,
+      default: '',
+      trim: true,
+      index: true,
+    },
+    paymentStatus: {
+      type: String,
+      default: 'PAID',
+      index: true,
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
     fullName: { type: String, required: true, trim: true, maxlength: 80 },
     email: { type: String, required: true, trim: true, lowercase: true },
     phone: { type: String, required: true, trim: true },
@@ -70,7 +112,7 @@ const pteBookingRequestSchema = new mongoose.Schema(
 
     message: { type: String, default: '', trim: true, maxlength: 1000 },
 
-    status: { type: String, enum: PTE_BOOKING_STATUSES, default: 'New', index: true },
+    status: { type: String, enum: PTE_BOOKING_STATUSES, default: 'Booking Request Pending', index: true },
     adminNotes: { type: String, default: '', trim: true, maxlength: 2000 },
 
     confirmationDetails: { type: confirmationDetailsSchema, default: () => ({}) },

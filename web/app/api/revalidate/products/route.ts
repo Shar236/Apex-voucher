@@ -41,6 +41,8 @@ export async function POST(req: Request) {
   try {
     revalidateTag('products', { expire: 0 });
     revalidateTag('website-config', { expire: 0 });
+    // PTE Exam Booking storefront catalog (booking cards on `/`).
+    revalidateTag('pte-booking-catalog', { expire: 0 });
     for (const slug of slugs) {
       revalidateTag(`product-${slug}`, { expire: 0 });
     }

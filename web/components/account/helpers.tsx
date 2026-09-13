@@ -168,11 +168,22 @@ export function PasswordField({
 
 export function OrderRow({ o, detailed = false }: { o: AccountOrder; detailed?: boolean }) {
   const items = o.items || [];
+  const isPteOrder = items.some(
+    (it: any) =>
+      it?.voucherType === 'PTE-BOOKING' ||
+      it?.category === 'PTE' ||
+      (it?.productName || it?.name || '').toLowerCase().includes('pte')
+  );
   return (
     <div className="rounded-2xl p-4 bg-neutral-50 dark:bg-[#0E0E0E] border border-[#EAEAEA] dark:border-[#292929] flex flex-col md:flex-row md:items-center justify-between gap-3">
       <div>
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className="font-black text-neutral-900 dark:text-white text-sm">#{o.orderNo}</span>
+          {isPteOrder && (
+            <span className="px-2 py-0.5 rounded-full border border-[#FF005C]/30 bg-[#FF005C]/10 text-[10px] font-black text-[#FF005C]">
+              EXAM BOOKING SERVICE
+            </span>
+          )}
           <span className={`px-2 py-0.5 rounded-full border text-[10px] font-black ${statusColor(o.orderStatus)}`}>{o.orderStatus}</span>
           <span className={`px-2 py-0.5 rounded-full border text-[10px] font-black ${statusColor(o.paymentStatus)}`}>{o.paymentStatus}</span>
         </div>

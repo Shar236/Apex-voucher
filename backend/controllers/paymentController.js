@@ -5,8 +5,10 @@ import { VoucherRequest } from '../models/VoucherRequest.js';
 import { Promotion } from '../models/Promotion.js';
 import { Campaign } from '../models/Campaign.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { PTEBookingProduct } from '../models/PTEBookingProduct.js';
+import { PTEBookingRequest } from '../models/PTEBookingRequest.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { generateOrderNo } from '../utils/index.js';
+import { generateOrderNo, generatePTEBookingRequestId } from '../utils/index.js';
 import { runInTransaction } from '../utils/transaction.js';
 import { applyPromotion } from '../services/promotions.js';
 import {
@@ -14,6 +16,8 @@ import {
   sendAdminVoucherSaleNotification,
   sendAdminVoucherAssignmentFailureAlert,
   sendAdminEmailDeliveryFailureAlert,
+  sendPTEBookingConfirmationToCustomer,
+  sendPTEBookingAdminNotification,
 } from '../services/email.js';
 import { allocateVouchersForOrder, normalizeVoucherType } from '../services/voucherAllocation.js';
 import { markVoucherRequestFulfilled } from '../services/voucherRequestService.js';
@@ -58,18 +62,42 @@ const MAX_LINE_ITEM_QUANTITY = 50;
  * Trusted, server-side pricing. The frontend sends only { productId, quantity }.
  * Every price, discount and total is (re)computed here from the database.
  * ──────────────────────────────────────────────────────────────────────────── */
-const getProductsWithPrices = async (lineItems) => {
+const getProductsWithPrices = async (lineItems) => resolveOrderLineItems(lineItems);
+
+/**
+ * Trusted, server-side pricing for cart items — exported for regression tests.
+ *
+ * Resolves each { productId, quantity } (optional durationKey) against the
+ * database: voucher products from `Product`, PTE Exam Booking services from
+ * `PTEBookingProduct`. The client NEVER sends a price — the unit price is
+ * always re-read from the DB at order creation, so an admin price change is
+ * reflected in the very next cart addition / checkout, and a tampered payload
+ * cannot influence the charged amount.
+ */
+export const resolveOrderLineItems = async (lineItems) => {
   const ids = lineItems.map((it) => it.productId);
   if (ids.some((id) => !isValidObjectId(id))) {
     throw new AppError('Invalid product id in order items', 400, 'INVALID_PRODUCT_ID');
   }
   const found = await Product.find({ _id: { $in: ids }, active: true, archived: { $ne: true } });
   const map = Object.fromEntries(found.map((p) => [p._id.toString(), p]));
+  const missingIds = ids.filter((id) => !map[String(id)]);
+  let pteMap = {};
+  if (missingIds.length > 0) {
+    const pteFound = await PTEBookingProduct.find({
+      _id: { $in: missingIds },
+      status: 'published',
+      active: true,
+    });
+    pteMap = Object.fromEntries(pteFound.map((p) => [p._id.toString(), p]));
+  }
   const items = [];
   for (const it of lineItems) {
-    const product = map[String(it.productId)];
-    if (!product) throw new AppError('Product not found or inactive', 400, 'PRODUCT_MISSING');
-    if (product.comingSoon) throw new AppError(`${product.name} is not available for purchase yet`, 400, 'PRODUCT_COMING_SOON');
+    const idStr = String(it.productId);
+    const product = map[idStr];
+    const pteProduct = pteMap[idStr];
+    if (!product && !pteProduct) throw new AppError('Product not found or inactive', 400, 'PRODUCT_MISSING');
+    if (product && product.comingSoon) throw new AppError(`${product.name} is not available for purchase yet`, 400, 'PRODUCT_COMING_SOON');
 
     const qtyRaw = Number(it.quantity);
     if (!Number.isFinite(qtyRaw) || !Number.isInteger(qtyRaw) || qtyRaw < 1) {
@@ -77,6 +105,31 @@ const getProductsWithPrices = async (lineItems) => {
     }
     if (qtyRaw > MAX_LINE_ITEM_QUANTITY) {
       throw new AppError(`Maximum quantity per item is ${MAX_LINE_ITEM_QUANTITY}`, 400, 'QUANTITY_TOO_HIGH');
+    }
+
+    // ── PTE Exam Booking service: no voucher codes, price straight from the
+    //    booking product's `pricing.bookingPrice`. Marked with a dedicated
+    //    voucherType so voucher allocation skips it at fulfilment.
+    if (pteProduct) {
+      const bookingPrice = Number(pteProduct.pricing?.bookingPrice);
+      const standardPrice = Number(pteProduct.pricing?.standardPrice) || 0;
+      if (!Number.isFinite(bookingPrice) || bookingPrice <= 0) {
+        throw new AppError(`${pteProduct.name} is not priced correctly. Please contact support.`, 400, 'PRODUCT_PRICE_INVALID');
+      }
+      items.push({
+        productId: pteProduct._id,
+        productName: pteProduct.name,
+        slug: pteProduct.key || '',
+        voucherType: 'PTE-BOOKING',
+        brand: 'Pearson PTE',
+        unitPrice: bookingPrice,
+        originalPrice: standardPrice > 0 ? standardPrice : bookingPrice,
+        quantity: qtyRaw,
+        durationKey: null,
+        durationLabel: null,
+        validityDays: null,
+      });
+      continue;
     }
 
     // Duration variant pricing: when the buyer selected a duration (e.g. APS 1 Week),
@@ -462,6 +515,90 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
     };
   }
 
+  const pteBookingItems = (working.items || []).filter(
+    (it) => normalizeVoucherType(it.voucherType) === 'PTEBOOKING'
+  );
+  const hasPteBookingItems = pteBookingItems.length > 0;
+  const hasVoucherItems = (working.items || []).some(
+    (it) => normalizeVoucherType(it.voucherType) !== 'PTEBOOKING'
+  );
+
+  let bookingRequest = null;
+  if (hasPteBookingItems) {
+    bookingRequest = await PTEBookingRequest.findOne({ orderId: working._id });
+    if (!bookingRequest) {
+      let matchedExamType = 'PTE Academic';
+      const pName = (pteBookingItems[0]?.productName || '').toLowerCase();
+      if (pName.includes('ukvi')) matchedExamType = 'PTE Academic UKVI';
+      else if (pName.includes('core')) matchedExamType = 'PTE Core';
+
+      bookingRequest = await PTEBookingRequest.create({
+        requestId: generatePTEBookingRequestId(),
+        userId: working.userId || user?._id || user?.id || null,
+        orderId: working._id,
+        orderNo: working.orderNo,
+        amountPaid: working.total,
+        currency: working.currency || 'INR',
+        paymentId: razorpayPaymentId || working.razorpayPaymentId || '',
+        paymentStatus: 'PAID',
+        paidAt: working.paidAt || new Date(),
+        fullName: user?.name || working.customerSnapshot?.name || working.billingDetails?.name || 'Customer',
+        email: user?.email || working.customerSnapshot?.email || working.billingDetails?.email || '',
+        phone: user?.phone || working.customerSnapshot?.phone || working.billingDetails?.phone || '',
+        examType: matchedExamType,
+        preferredCity: working.bookingPreferences?.preferredCity || 'Not Specified',
+        preferredTestCentre: working.bookingPreferences?.preferredTestCentre || '',
+        preferredDate: working.bookingPreferences?.preferredDate || null,
+        preferredTime: working.bookingPreferences?.preferredTime || 'Any Time',
+        message: working.bookingPreferences?.message || '',
+        status: 'Booking Request Pending',
+        termsAccepted: true,
+        activityHistory: [
+          {
+            status: 'Booking Request Pending',
+            note: `Payment verified (${working.currency || 'INR'} ${working.total}). Booking request submitted to processing queue.`,
+            adminEmail: 'system@apexvouchers.in',
+            timestamp: new Date(),
+          },
+        ],
+      });
+    }
+
+    if (!working.pteBookingRequestId || String(working.pteBookingRequestId) !== String(bookingRequest._id)) {
+      working.pteBookingRequestId = bookingRequest._id;
+      await working.save().catch(() => {});
+    }
+
+    // Customer email confirming payment received (NOT exam confirmed)
+    await sendPTEBookingConfirmationToCustomer(bookingRequest).catch((err) =>
+      console.error(`[email:pte-booking-ack-failed] order=${working.orderNo}: ${err.message}`)
+    );
+
+    // Admin notification of new paid booking request
+    await sendPTEBookingAdminNotification(bookingRequest).catch((err) =>
+      console.error(`[admin:pte-booking-alert-failed] order=${working.orderNo}: ${err.message}`)
+    );
+  }
+
+  // Pure PTE Booking order: NEVER allocate vouchers, NEVER send voucher emails.
+  // Order remains in PROCESSING until admin confirms the appointment.
+  if (hasPteBookingItems && !hasVoucherItems) {
+    working.orderStatus = 'PROCESSING';
+    working.fulfillmentStatus = 'PROCESSING';
+    working.emailStatus = 'SENT';
+    working.adminNotifiedAt = new Date();
+    await working.save().catch(() => {});
+    fx('fulfill:pte-booking-done', working, { source, bookingRequestId: bookingRequest?.requestId });
+
+    return {
+      alreadyFulfilled: false,
+      isPteBooking: true,
+      bookingRequest,
+      vouchers: [],
+      order: working,
+    };
+  }
+
   const enriched = enrichVouchers(working, vouchers);
   fx('fulfill:allocated', working, { source, voucherCount: enriched.length });
 
@@ -501,9 +638,19 @@ const fulfillVerifiedOrder = async ({ order, user, razorpayPaymentId, source, ev
  * refunded or the order re-opened.
  * ──────────────────────────────────────────────────────────────────────────── */
 export const reconcileOrderPayment = async ({ order, user, source = 'reconcile', dryRun = false }) => {
+  const isPteBookingOnly =
+    (order.items || []).some((it) => normalizeVoucherType(it.voucherType) === 'PTEBOOKING') &&
+    !(order.items || []).some((it) => normalizeVoucherType(it.voucherType) !== 'PTEBOOKING');
+
   // Already done.
-  if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
-    return { reconciled: true, alreadyFulfilled: true, order, vouchers: dryRun ? [] : await publicVoucherList(order) };
+  if (order.paymentStatus === 'PAID') {
+    if (isPteBookingOnly) {
+      const bookingRequest = await PTEBookingRequest.findOne({ orderId: order._id }).lean();
+      return { reconciled: true, alreadyFulfilled: true, isPteBooking: true, bookingRequest, order, vouchers: [] };
+    }
+    if (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED') {
+      return { reconciled: true, alreadyFulfilled: true, order, vouchers: dryRun ? [] : await publicVoucherList(order) };
+    }
   }
   if (!order.razorpayOrderId) {
     return { reconciled: false, reason: 'NO_GATEWAY_ORDER', order };
@@ -635,7 +782,7 @@ export const createPaymentOrder = async (req, res, next) => {
       return next(new AppError('Online payment is temporarily unavailable. Please try again later.', 503, gate.code));
     }
 
-    let { items, promoCode, billing, paymentMethod } = req.body || {};
+    let { items, promoCode, billing, paymentMethod, bookingPreferences } = req.body || {};
     const { voucherRequestId } = req.body || {};
 
     // Payment for a previously out-of-stock voucher request: trust the request,
@@ -732,6 +879,14 @@ export const createPaymentOrder = async (req, res, next) => {
       fulfillmentStatus: 'PENDING',
       source: voucherRequest ? 'VOUCHER_REQUEST' : 'STOREFRONT',
       voucherRequestId: voucherRequest?._id || null,
+      pteBookingRequestId: null,
+      bookingPreferences: {
+        preferredCity: bookingPreferences?.preferredCity || '',
+        preferredTestCentre: bookingPreferences?.preferredTestCentre || '',
+        preferredDate: bookingPreferences?.preferredDate ? new Date(bookingPreferences.preferredDate) : null,
+        preferredTime: bookingPreferences?.preferredTime || 'Any Time',
+        message: bookingPreferences?.message || '',
+      },
       paymentProvider: 'razorpay',
       paymentMethod: effectivePaymentMethod,
       billingDetails: {
@@ -841,14 +996,34 @@ export const verifyPayment = async (req, res, next) => {
     fx('verify:enter', order, { hasSig: !!razorpaySignature });
 
     // Idempotent short-circuit.
-    if (order.paymentStatus === 'PAID' && (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED')) {
-      return res.json({
-        success: true,
-        paymentStatus: 'PAID',
-        orderStatus: 'FULFILLED',
-        data: order.toObject(),
-        vouchers: await publicVoucherList(order),
-      });
+    const isPteBookingOnly =
+      (order.items || []).some((it) => normalizeVoucherType(it.voucherType) === 'PTEBOOKING') &&
+      !(order.items || []).some((it) => normalizeVoucherType(it.voucherType) !== 'PTEBOOKING');
+
+    if (order.paymentStatus === 'PAID') {
+      if (isPteBookingOnly) {
+        const bookingReq = await PTEBookingRequest.findOne({ orderId: order._id });
+        return res.json({
+          success: true,
+          paymentStatus: 'PAID',
+          orderStatus: order.orderStatus,
+          fulfillmentStatus: order.fulfillmentStatus,
+          isPteBooking: true,
+          bookingRequest: bookingReq,
+          message: 'Your PTE booking request has been received.',
+          data: order.toObject(),
+          vouchers: [],
+        });
+      }
+      if (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED') {
+        return res.json({
+          success: true,
+          paymentStatus: 'PAID',
+          orderStatus: 'FULFILLED',
+          data: order.toObject(),
+          vouchers: await publicVoucherList(order),
+        });
+      }
     }
 
     // Order-binding: the gateway order id must be the one we created for THIS order.
@@ -918,6 +1093,31 @@ export const verifyPayment = async (req, res, next) => {
       source: 'verify',
     });
     fx('verify:done', result.order, { needsAllocation: !!result.needsAllocation, vouchers: (result.vouchers || []).length });
+
+    if (result.isPteBooking) {
+      return res.json({
+        success: true,
+        paymentStatus: 'PAID',
+        orderStatus: result.order.orderStatus,
+        fulfillmentStatus: result.order.fulfillmentStatus,
+        isPteBooking: true,
+        bookingRequest: result.bookingRequest,
+        message: 'Payment received. Your PTE booking request has been submitted for processing.',
+        data: {
+          orderNo: result.order.orderNo,
+          total: result.order.total,
+          currency: result.order.currency,
+          paymentStatus: 'PAID',
+          orderStatus: result.order.orderStatus,
+          fulfillmentStatus: result.order.fulfillmentStatus,
+          emailStatus: result.order.emailStatus,
+          paymentReference: result.order.razorpayPaymentId || result.order.paymentReference || null,
+          paidAt: result.order.paidAt,
+          bookingRequest: result.bookingRequest,
+        },
+        vouchers: [],
+      });
+    }
 
     if (result.needsAllocation) {
       const isMismatch = result.order.fulfillmentStatus === 'MISMATCH_BLOCKED';
@@ -996,10 +1196,15 @@ export const reconcilePayment = async (req, res, next) => {
     }
 
     const fresh = result.order || (await Order.findById(order._id));
+    const isPteBooking = (fresh.items || []).some((it) => normalizeVoucherType(it.voucherType) === 'PTEBOOKING');
+    let bookingRequest = null;
+    if (isPteBooking) {
+      bookingRequest = await PTEBookingRequest.findOne({ orderId: fresh._id }).lean();
+    }
     const fulfilled =
       fresh.paymentStatus === 'PAID' &&
       (fresh.orderStatus === 'FULFILLED' || fresh.fulfillmentStatus === 'FULFILLED');
-    const vouchers = fulfilled ? await publicVoucherList(fresh) : [];
+    const vouchers = fulfilled && !isPteBooking ? await publicVoucherList(fresh) : [];
 
     return res.json({
       success: true,
@@ -1007,14 +1212,20 @@ export const reconcilePayment = async (req, res, next) => {
       pending: !fulfilled && !result.failed && fresh.paymentStatus === 'PENDING',
       needsAllocation: fresh.orderStatus === 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
       notCollectable: result.reason === 'ORDER_NOT_COLLECTABLE',
-      message: fulfilled
-        ? 'Payment confirmed — your voucher is ready.'
-        : result.failed
-          ? 'This payment did not complete. No voucher was issued.'
-          : result.reason === 'ORDER_NOT_COLLECTABLE'
-            ? 'We received a payment but this order is closed — our team has been alerted.'
-            : 'Payment not confirmed yet. If money was deducted your voucher will appear here shortly.',
-      ...statusPayload(fresh, vouchers),
+      isPteBooking,
+      bookingRequest,
+      message: isPteBooking
+        ? (fresh.paymentStatus === 'PAID'
+            ? 'Payment confirmed — your PTE booking request has been received and is being processed.'
+            : 'Payment not confirmed yet.')
+        : fulfilled
+          ? 'Payment confirmed — your voucher is ready.'
+          : result.failed
+            ? 'This payment did not complete. No voucher was issued.'
+            : result.reason === 'ORDER_NOT_COLLECTABLE'
+              ? 'We received a payment but this order is closed — our team has been alerted.'
+              : 'Payment not confirmed yet. If money was deducted your voucher will appear here shortly.',
+      ...statusPayload(fresh, vouchers, bookingRequest),
       vouchers,
     });
   } catch (err) {
@@ -1024,25 +1235,32 @@ export const reconcilePayment = async (req, res, next) => {
 };
 
 // Shared status projection so /status, /verify and /reconcile agree.
-const statusPayload = (order, vouchers = []) => ({
-  paymentStatus: order.paymentStatus,
-  orderStatus: order.orderStatus,
-  fulfillmentStatus: order.fulfillmentStatus,
-  emailStatus: order.emailStatus,
-  data: {
-    orderNo: order.orderNo,
-    total: order.total,
-    currency: order.currency,
+const statusPayload = (order, vouchers = [], bookingRequest = null) => {
+  const isPteBooking = (order.items || []).some((it) => normalizeVoucherType(it.voucherType) === 'PTEBOOKING');
+  return {
     paymentStatus: order.paymentStatus,
     orderStatus: order.orderStatus,
     fulfillmentStatus: order.fulfillmentStatus,
     emailStatus: order.emailStatus,
-    paymentReference: order.razorpayPaymentId || order.paymentReference || null,
-    createdAt: order.createdAt,
-    paidAt: order.paidAt,
-  },
-  vouchers,
-});
+    isPteBooking,
+    bookingRequest: bookingRequest || null,
+    data: {
+      orderNo: order.orderNo,
+      total: order.total,
+      currency: order.currency,
+      paymentStatus: order.paymentStatus,
+      orderStatus: order.orderStatus,
+      fulfillmentStatus: order.fulfillmentStatus,
+      emailStatus: order.emailStatus,
+      paymentReference: order.razorpayPaymentId || order.paymentReference || null,
+      createdAt: order.createdAt,
+      paidAt: order.paidAt,
+      isPteBooking,
+      bookingRequest: bookingRequest || null,
+    },
+    vouchers,
+  };
+};
 
 /* ══════════════════════════════════════════════════════════════════════════
  * GET /api/payments/order/:orderId   (auth required)
@@ -1079,17 +1297,25 @@ export const getPaymentStatus = async (req, res, next) => {
     }
     order = order.toObject ? order.toObject() : order;
 
+    const isPteBooking = (order.items || []).some((it) => normalizeVoucherType(it.voucherType) === 'PTEBOOKING');
+    let bookingRequest = null;
+    if (isPteBooking) {
+      bookingRequest = await PTEBookingRequest.findOne({ orderId: order._id }).lean();
+    }
+
     const isFulfilled =
       order.paymentStatus === 'PAID' &&
       (order.orderStatus === 'FULFILLED' || order.fulfillmentStatus === 'FULFILLED');
 
-    const vouchers = isFulfilled ? await publicVoucherList(order) : [];
+    const vouchers = isFulfilled && !isPteBooking ? await publicVoucherList(order) : [];
 
     res.json({
       success: true,
       pending: order.paymentStatus === 'PENDING',
       needsAllocation: order.orderStatus === 'PAYMENT_RECEIVED_NEEDS_ALLOCATION',
-      ...statusPayload(order, vouchers),
+      isPteBooking,
+      bookingRequest,
+      ...statusPayload(order, vouchers, bookingRequest),
     });
   } catch (err) {
     next(err);

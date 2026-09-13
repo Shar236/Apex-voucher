@@ -136,6 +136,76 @@ const runTests = async () => {
   // ── 2. getAdminProduct round-trips ──────────────────────────────────────
   const adminGet = await run(getAdminProduct, { params: { id: pteId } });
   ok(adminGet.status === 200 && adminGet.body?.data?.redemptionGuide?.steps?.length === 2, 'getAdminProduct returns the stored guide');
+  // ── 2b. Product details sync: the admin editor and the public page read the ──
+  //      SAME `productContent.content` — no second/duplicate field, and the
+  //      full rich-text formatting (headings, bold/italic, lists, links,
+  //      images, tables, line breaks) survives every round-trip. This is the
+  //      regression that previously showed a blank editor in the admin.
+  console.log('\n— product details sync (admin editor ↔ public page) —');
+
+  const RICH_HTML =
+    '<h2>About the voucher</h2>' +
+    '<p>Buy now and <strong>save up to ₹500</strong> on your exam booking.</p>' +
+    '<ul><li>Genuine digital voucher</li><li>Instant email delivery</li></ul>' +
+    '<p>See the <em>official</em> <a href="https://ielts.idp.com/" target="_blank" title="IELTS IDP">IELTS website</a>.</p>' +
+    '<figure><img src="https://res.cloudinary.com/demo/image/upload/ielts.webp" alt="IELTS" width="800" height="400" loading="lazy" /><figcaption>IELTS voucher</figcaption></figure>' +
+    '<table><thead><tr><th>Plan</th><th>Price</th></tr></thead><tbody><tr><td>1 Month</td><td>₹500 OFF</td></tr></tbody></table>' +
+    '<p>Line one<br />Line two</p>';
+
+  const syncCreated = await run(createProduct, {
+    body: baseBody('SyncDetails', {
+      productContent: { enabled: true, heading: 'About the IELTS Coupon Code', content: RICH_HTML },
+    }),
+  });
+  ok(syncCreated.status === 201 && !!syncCreated.body?.data?._id, 'create: product with rich productContent → 201');
+  const syncId = syncCreated.body.data._id;
+
+  // getAdminProduct is the exact payload the admin editor receives
+  // (ProductEditor → adminApi.getProduct → toDraft). It must come back FULLY
+  // populated — previously it rendered as an empty editor even though the
+  // public page (same field) displayed the content.
+  const adminDetails = await run(getAdminProduct, { params: { id: syncId } });
+  const adminPc = adminDetails.body?.data?.productContent || {};
+  ok(adminDetails.status === 200, 'getAdminProduct → 200');
+  ok(adminPc.enabled === true && adminPc.heading === 'About the IELTS Coupon Code', 'admin payload carries enabled + heading', JSON.stringify(adminPc).slice(0, 120));
+  ok(typeof adminPc.content === 'string' && adminPc.content.length > 0, 'admin editor receives non-empty productContent.content', `len=${String(adminPc.content).length}`);
+  ok(adminPc.content.includes('<h2>About the voucher</h2>') && adminPc.content.includes('<strong>save up to ₹500</strong>'), 'headings + bold preserved');
+  ok(adminPc.content.includes('<em>official</em>') && adminPc.content.includes('<ul><li>Genuine digital voucher</li>'), 'italic + bullet list preserved');
+  ok(/<a href="https:\/\/ielts\.idp\.com\/"[\s\S]*>IELTS website<\/a>/.test(adminPc.content), 'link preserved with its href (safe rel stamped on save)');
+  ok(/<img src="https:\/\/res\.cloudinary\.com\/demo\/image\/upload\/ielts\.webp"[\s\S]*alt="IELTS"/.test(adminPc.content), 'image (src + alt) preserved');
+  ok(adminPc.content.includes('<table>') && adminPc.content.includes('<thead>') && adminPc.content.includes('<tbody>'), 'table preserved');
+  ok(adminPc.content.includes('<br />'), 'line break preserved');
+
+  // The public page renders the exact same string — single source of truth.
+  const publicDetails = await run(getProduct, { params: { id: syncId }, user: undefined });
+  const publicPc = publicDetails.body?.data?.productContent || {};
+  ok(publicDetails.status === 200 && publicPc.content === adminPc.content, 'public getProduct returns the identical productContent.content');
+  ok(JSON.stringify(Object.keys(publicPc)) === '["enabled","heading","content"]', 'no duplicate/aliased details field on the public payload', JSON.stringify(Object.keys(publicPc)));
+
+  // Editing in the admin editor → updateProduct → persists to the same field.
+  const EDITED_HTML = RICH_HTML
+    .replace('<h2>About the voucher</h2>', '<h2>About the IELTS Coupon Code 2026</h2>')
+    .replace('<strong>save up to ₹500</strong>', '<strong>save up to ₹600</strong>');
+  const syncUpdate = await run(updateProduct, {
+    params: { id: syncId },
+    body: {
+      productContent: { enabled: true, heading: 'About the IELTS Coupon Code 2026', content: EDITED_HTML },
+    },
+  });
+  ok(syncUpdate.status === 200, 'updateProduct with edited productContent → 200');
+  ok(syncUpdate.body?.data?.productContent?.content !== RICH_HTML, 'the edit replaced the old content (not appended to a second field)');
+  ok(syncUpdate.body?.data?.productContent?.content.includes('About the IELTS Coupon Code 2026') && syncUpdate.body.data.productContent.content.includes('save up to ₹600'), 'edited content persisted to productContent.content');
+
+  const adminAfterEdit = await run(getAdminProduct, { params: { id: syncId } });
+  ok(adminAfterEdit.body?.data?.productContent?.content === syncUpdate.body.data.productContent.content, 'reopening the product in the editor shows the updated content');
+
+  const publicAfterEdit = await run(getProduct, { params: { id: syncId }, user: undefined });
+  ok(publicAfterEdit.body?.data?.productContent?.content === syncUpdate.body.data.productContent.content, 'refreshing the public page shows the updated content');
+
+  const rawDoc = await Product.findById(syncId).lean();
+  const rawPc = rawDoc.productContent || {};
+  ok(rawPc.content === syncUpdate.body.data.productContent.content, 'stored document keeps a single productContent.content (no duplicate field)');
+  ok(Object.keys(rawPc).length === 3, 'stored productContent has only enabled + heading + content', JSON.stringify(Object.keys(rawPc)));
 
   // ── 3. URL validation ──────────────────────────────────────────────────
   console.log('\n— validation —');

@@ -14,6 +14,7 @@ export { PageSEO } from './PageSEO.js';
 export { BlogPost, BLOG_STATUSES } from './BlogPost.js';
 export { BlogPostRevision } from './BlogPostRevision.js';
 export { Award } from './Award.js';
+export { PTEBookingProduct, PTE_BOOKING_PRODUCT_STATUSES, PTE_BOOKING_CURRENCIES } from './PTEBookingProduct.js';
 export { PTEBookingRequest, PTE_EXAM_TYPES, PTE_BOOKING_STATUSES } from './PTEBookingRequest.js';
 export {
   VoucherRequest,

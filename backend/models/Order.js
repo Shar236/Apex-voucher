@@ -116,6 +116,19 @@ const orderSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    pteBookingRequestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PTEBookingRequest',
+      default: null,
+      index: true,
+    },
+    bookingPreferences: {
+      preferredCity: { type: String, default: '' },
+      preferredTestCentre: { type: String, default: '' },
+      preferredDate: { type: Date, default: null },
+      preferredTime: { type: String, default: 'Any Time' },
+      message: { type: String, default: '' },
+    },
     paymentProvider: { type: String, default: null },
     paymentReference: { type: String, default: null, index: true },
     // Razorpay binding — the gateway order id we created for this internal order.

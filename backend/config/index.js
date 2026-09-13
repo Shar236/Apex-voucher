@@ -104,6 +104,14 @@ export const config = {
     ipApiUrl: process.env.GEO_IP_API_URL !== undefined && process.env.GEO_IP_API_URL !== null
       ? process.env.GEO_IP_API_URL
       : 'https://ipapi.co/{ip}/country/',
+    // SECOND, independent provider tried only when the primary above is
+    // unreachable/rate-limited/times out — a VPN/international visitor should
+    // not silently fall back to India just because one free geo-IP service had
+    // an outage. Different host on purpose (uncorrelated failure). Empty string
+    // disables it (primary + fallback country only).
+    ipApiUrlFallback: process.env.GEO_IP_API_URL_FALLBACK !== undefined && process.env.GEO_IP_API_URL_FALLBACK !== null
+      ? process.env.GEO_IP_API_URL_FALLBACK
+      : 'https://get.geojs.io/v1/ip/country/{ip}.json',
   },
 
   // ── Public "recent purchase" social-proof notifications ───────────────────

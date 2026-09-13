@@ -1,6 +1,10 @@
+'use client';
+
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { ExternalLink, Info, PlayCircle } from 'lucide-react';
+import { ExternalLink, Info, PlayCircle, ZoomIn } from 'lucide-react';
 import SectionHeading from '@/components/ui/section-heading';
+import { ImageLightbox, type LightboxImage } from '@/components/ui/image-lightbox';
 import { getRedemptionGuide } from '@/lib/redemption-guides';
 import type { Product } from '@/lib/types';
 
@@ -36,7 +40,39 @@ export function RedemptionGuideSection({
   headingAlign?: 'center' | 'left';
   previewMode?: boolean;
 }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
   const guide = getRedemptionGuide(product);
+
+  const screenshotSteps = useMemo(() => {
+    return guide.steps
+      .map((step, originalIndex) => ({
+        step,
+        originalIndex,
+      }))
+      .filter((item) => !!item.step.screenshot?.url);
+  }, [guide.steps]);
+
+  const lightboxImages: LightboxImage[] = useMemo(() => {
+    return screenshotSteps.map(({ step, originalIndex }) => ({
+      url: step.screenshot!.url as string,
+      alt: step.screenshot?.alt?.trim() || `${step.title} — ${product.name} redemption screenshot`,
+      caption: step.screenshot?.caption,
+      title: step.title,
+      stepNumber: originalIndex + 1,
+      width: step.screenshot?.width,
+      height: step.screenshot?.height,
+    }));
+  }, [screenshotSteps, product.name]);
+
+  const openLightbox = (shotIndex: number) => {
+    if (shotIndex >= 0 && shotIndex < lightboxImages.length) {
+      setLightboxIndex(shotIndex);
+      setLightboxOpen(true);
+    }
+  };
+
   if (guide.steps.length === 0) return null;
 
   const productLabel = /\bvoucher\b/i.test(product.name) ? product.name : `${product.name} Voucher`;
@@ -55,6 +91,7 @@ export function RedemptionGuideSection({
           const shot = step.screenshot;
           const hasShot = !!shot?.url;
           const alt = shot?.alt?.trim() || `${step.title} — ${product.name} redemption screenshot`;
+          const shotIndex = screenshotSteps.findIndex((item) => item.originalIndex === i);
 
           const textCol = (
             <div className={`space-y-2.5 ${hasShot && i % 2 === 1 ? 'md:order-2' : ''}`}>
@@ -100,17 +137,38 @@ export function RedemptionGuideSection({
             <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-center">
               {textCol}
               <figure className={`m-0 ${i % 2 === 1 ? 'md:order-1' : ''}`}>
-                <div className="overflow-hidden rounded-2xl border border-line bg-surface-raised">
-                  <Image
-                    src={shot!.url as string}
-                    alt={alt}
-                    width={shot?.width && shot.width > 0 ? shot.width : 1600}
-                    height={shot?.height && shot.height > 0 ? shot.height : 900}
-                    sizes="(max-width: 768px) 100vw, 640px"
-                    className="w-full h-auto"
-                    unoptimized={previewMode}
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => openLightbox(shotIndex)}
+                  aria-label={`Enlarge Step ${i + 1} screenshot: ${step.title}`}
+                  className="group/img relative block w-full overflow-hidden rounded-2xl border border-line bg-surface-raised cursor-zoom-in transition-all duration-300 hover:border-accent/40 hover:shadow-xl hover:shadow-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent text-left"
+                >
+                  <div className="overflow-hidden">
+                    <Image
+                      src={shot!.url as string}
+                      alt={alt}
+                      width={shot?.width && shot.width > 0 ? shot.width : 1600}
+                      height={shot?.height && shot.height > 0 ? shot.height : 900}
+                      sizes="(max-width: 768px) 100vw, 640px"
+                      className="w-full h-auto transition-transform duration-300 group-hover/img:scale-[1.02]"
+                      unoptimized={previewMode}
+                    />
+                  </div>
+
+                  {/* Hover overlay hint */}
+                  <div className="absolute inset-0 bg-ink/10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center">
+                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-ink/85 text-white text-xs font-medium backdrop-blur-md border border-white/20 shadow-lg transform translate-y-1 group-hover/img:translate-y-0 transition-transform duration-200">
+                      <ZoomIn className="w-3.5 h-3.5 text-accent" />
+                      <span>Click to enlarge</span>
+                    </span>
+                  </div>
+
+                  {/* Corner zoom badge */}
+                  <div className="absolute top-2.5 right-2.5 w-7 h-7 rounded-lg bg-black/55 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-md opacity-70 group-hover/img:opacity-100 transition-opacity pointer-events-none">
+                    <ZoomIn className="w-3.5 h-3.5 text-accent" />
+                  </div>
+                </button>
+
                 {shot?.caption && (
                   <figcaption className="mt-2 text-[11px] font-normal text-ink-muted text-center">{shot.caption}</figcaption>
                 )}
@@ -133,6 +191,17 @@ export function RedemptionGuideSection({
           ))}
         </div>
       )}
+
+      {/* Enlarged Step Screenshot Modal Lightbox */}
+      <ImageLightbox
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        images={lightboxImages}
+        currentIndex={lightboxIndex}
+        onNavigate={setLightboxIndex}
+        previewMode={previewMode}
+      />
     </div>
   );
 }
+

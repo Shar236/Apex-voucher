@@ -16,7 +16,7 @@ const TESTIMONIALS = [
     city: 'Ahmedabad',
     exam: 'PTE Core',
     saved: '₹3,101',
-    comment: 'Used the PTE Core voucher for my Canada PR application. Code worked smoothly on the Pearson portal. The included mock tests were super helpful!',
+    comment: 'Used the PTE Core voucher for my Canada PR application. Code worked smoothly on the Pearson portal. The voucher savings were super helpful!',
   },
   {
     id: 3,

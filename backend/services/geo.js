@@ -7,8 +7,14 @@ import { config } from '../config/index.js';
  *   1. Deployment-platform geo headers injected at the edge (Cloudflare,
  *      Vercel, Fastly, nginx geo module) — the most reliable signal.
  *   2. A trusted IP-geolocation HTTP service (optional, cached per IP,
- *      configurable + disableable via GEO_IP_API_URL).
- *   3. A safe, configurable fallback country (GEO_FALLBACK_COUNTRY, default
+ *      configurable + disableable via GEO_IP_API_URL). A VPN's exit-node IP is
+ *      geolocated exactly like any other public IP — no special-casing needed,
+ *      the visitor is simply classified by whatever country that IP resolves to.
+ *   3. A SECOND, independent IP-geolocation provider (GEO_IP_API_URL_FALLBACK,
+ *      a different host) — tried only when #2 times out, errors, or returns an
+ *      inconclusive result, so a single provider's outage/rate-limit can't
+ *      silently misclassify international/VPN traffic as India.
+ *   4. A safe, configurable fallback country (GEO_FALLBACK_COUNTRY, default
  *      "IN" — the home market; an undetectable visitor is treated as India).
  *
  * NEVER TRUSTED FROM THE CLIENT: a `country` value in a request body is
@@ -60,43 +66,54 @@ const clientIpFromReq = (req) => {
   return String(ip || '').replace(/^::ffff:/, '');
 };
 
-/**
- * Look up the country for a single IP via the configured geolocation service.
- * Returns an ISO-2 code or null on any failure. Failures are cached briefly
- * (as null) so a flaky provider can't turn into a per-request stampede.
- */
-const lookupCountryForIp = async (ip) => {
-  const providerTemplate = config.geo.ipApiUrl;
-  if (!providerTemplate || !isPublicIp(ip)) return null;
-
-  const cached = lookupCache.get(ip);
-  if (cached && Date.now() - cached.at < LOOKUP_TTL_MS) return cached.country;
-
+/** Query one geo-IP provider template for one IP. Returns an ISO-2 code or null (never throws). */
+const queryGeoProvider = async (providerTemplate, ip) => {
+  if (!providerTemplate) return null;
   const url = providerTemplate.includes('{ip}')
     ? providerTemplate.replace('{ip}', encodeURIComponent(ip))
     : `${providerTemplate}${providerTemplate.endsWith('/') ? '' : '/'}${ip}`;
 
-  let country = null;
   try {
     const resp = await fetch(url, {
       headers: { Accept: 'text/plain, application/json' },
       signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
     });
-    if (resp.ok) {
-      const text = (await resp.text()).trim();
-      if (ISO2.test(text.toUpperCase())) {
-        country = text.toUpperCase();
-      } else if (text.startsWith('{')) {
-        // Tolerate JSON providers: { country: "US" } / { country_code: "US" }
-        try {
-          const body = JSON.parse(text);
-          const v = String(body.country || body.country_code || body.countryCode || '').toUpperCase();
-          if (ISO2.test(v)) country = v;
-        } catch {}
-      }
+    if (!resp.ok) return null;
+    const text = (await resp.text()).trim();
+    if (ISO2.test(text.toUpperCase())) return text.toUpperCase();
+    if (text.startsWith('{')) {
+      // Tolerate JSON providers: { country: "US" } / { country_code: "US" } / { countryCode: "US" }
+      try {
+        const body = JSON.parse(text);
+        const v = String(body.country || body.country_code || body.countryCode || '').toUpperCase();
+        if (ISO2.test(v)) return v;
+      } catch {}
     }
   } catch {
-    // provider unreachable / timeout — treated as "unknown"
+    // provider unreachable / timeout — treated as "unknown", next provider (if any) is tried
+  }
+  return null;
+};
+
+/**
+ * Look up the country for a single IP, trying each configured geolocation
+ * provider in order (primary, then the independent fallback) until one
+ * returns a usable result. Returns an ISO-2 code or null when every
+ * configured provider is unreachable/inconclusive. Only the FINAL outcome is
+ * cached (including a null one, briefly) so a flaky primary can't turn into a
+ * per-request stampede, while a live secondary still gets a real answer.
+ */
+const lookupCountryForIp = async (ip) => {
+  const providers = [config.geo.ipApiUrl, config.geo.ipApiUrlFallback].filter(Boolean);
+  if (providers.length === 0 || !isPublicIp(ip)) return null;
+
+  const cached = lookupCache.get(ip);
+  if (cached && Date.now() - cached.at < LOOKUP_TTL_MS) return cached.country;
+
+  let country = null;
+  for (const provider of providers) {
+    country = await queryGeoProvider(provider, ip);
+    if (country) break;
   }
 
   if (lookupCache.size >= LOOKUP_CACHE_MAX) {

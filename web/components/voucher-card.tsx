@@ -72,9 +72,11 @@ export function VoucherCard({ product }: { product: Product }) {
         isComingSoon ? 'opacity-92' : '',
       ].join(' ')}
     >
-      <div className="flex items-center justify-between gap-2 px-4 pt-4">
-        <StockBadge product={product} />
-        <span className="text-[11px] font-normal text-ink-muted text-right whitespace-nowrap">
+      <div className="flex items-center justify-between gap-2 px-4 pt-4 min-w-0">
+        <div className="min-w-0 flex-1 flex items-center">
+          <StockBadge product={product} />
+        </div>
+        <span className="text-[11px] font-medium text-ink-muted text-right whitespace-nowrap shrink-0">
           {validityLabel}
         </span>
       </div>

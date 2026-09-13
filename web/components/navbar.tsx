@@ -126,14 +126,13 @@ export function Navbar({
               <ApexLogo showTagline={false} />
             </Link>
 
-            <div className="hidden 2xl:flex items-center gap-0.5 font-normal text-[13px] text-ink-muted whitespace-nowrap">
+            <div className="hidden lg:flex items-center gap-0.5 xl:gap-1 font-normal text-[13px] xl:text-[13.5px] text-ink-muted whitespace-nowrap">
               <Link href="/" className={navLinkClass(isHomeActive)}>
                 Home
               </Link>
 
-
               <div className="relative" onMouseEnter={() => setVouchersDropdownOpen(true)} onMouseLeave={() => setVouchersDropdownOpen(false)}>
-                <Link href="/exam-vouchers" className={`flex items-center gap-1 px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${isShopActive ? 'text-accent font-medium bg-accent/8' : 'hover:bg-accent/6 hover:text-accent'}`}>
+                <Link href="/exam-vouchers" className={`flex items-center gap-1 px-2.5 xl:px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${isShopActive ? 'text-accent font-medium bg-accent/8' : 'hover:bg-accent/6 hover:text-accent'}`}>
                   <span>Vouchers</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${vouchersDropdownOpen ? 'rotate-180 text-accent' : 'text-ink-muted'}`} />
                 </Link>
@@ -161,7 +160,7 @@ export function Navbar({
                 )}
               </div>
 
-              <Link href="/exam-booking" className={`px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 transition-colors ${isExamBookingActive ? 'text-accent font-medium bg-accent/8' : 'hover:bg-accent/6 hover:text-accent'}`}>
+              <Link href="/exam-booking" className={`px-2.5 xl:px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 transition-colors ${isExamBookingActive ? 'text-accent font-medium bg-accent/8' : 'hover:bg-accent/6 hover:text-accent'}`}>
                 <span>Exam Booking</span>
                 <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-accent/10 text-accent border border-accent/20 leading-tight">PTE</span>
               </Link>
@@ -177,7 +176,6 @@ export function Navbar({
               <Link href="/awards" className={`hidden xl:inline-block ${navLinkClass(isAwardsActive)}`}>
                 Awards
               </Link>
-
             </div>
 
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
@@ -190,21 +188,21 @@ export function Navbar({
                 )}
               </button>
 
-              <div className="hidden 2xl:flex">
+              <div className="hidden xl:flex">
                 <Button as={Link} href="/exam-booking" variant="secondary" size="sm">
                   <CalendarCheck className="w-3.5 h-3.5" />
                   <span>Book Exam</span>
                 </Button>
               </div>
 
-              <div className="hidden 2xl:flex">
+              <div className="hidden sm:flex">
                 <Button as={Link} href="/exam-vouchers" variant="primary" size="sm">
                   <Ticket className="w-3.5 h-3.5" />
                   <span>Buy Voucher</span>
                 </Button>
               </div>
 
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="2xl:hidden p-2 rounded-xl bg-surface-raised text-ink border border-line cursor-pointer" aria-label="Open navigation menu">
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="lg:hidden p-2 rounded-xl bg-surface-raised text-ink border border-line cursor-pointer" aria-label="Open navigation menu">
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
@@ -212,7 +210,7 @@ export function Navbar({
         </div>
 
         {isMenuOpen && (
-          <div className="2xl:hidden bg-surface border-b border-line px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
+          <div className="lg:hidden bg-surface border-b border-line px-4 pt-3 pb-6 space-y-2.5 mt-2 animate-in slide-in-from-top duration-200">
             <div className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-line">
               <span className="text-xs font-medium text-ink">Theme Mode</span>
               <ThemeToggle compact={false} showLabel />

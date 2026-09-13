@@ -55,7 +55,14 @@ export const allocateVouchersForOrder = async ({ order, user, session = null }) 
     throw new AppError('Order is required for voucher allocation', 400, 'ORDER_REQUIRED');
   }
 
-  // 1. Idempotency Guard: check if order is already fulfilled
+  // 1. Idempotency Guard: check if order is already fulfilled or already processed
+  const hasVoucherItems = (order.items || []).some((it) => normalizeVoucherType(it.voucherType) !== 'PTEBOOKING');
+  const hasPteBookingItems = (order.items || []).some((it) => normalizeVoucherType(it.voucherType) === 'PTEBOOKING');
+
+  if (hasPteBookingItems && !hasVoucherItems && order.paymentStatus === 'PAID') {
+    return { vouchers: [], alreadyFulfilled: true, isPteBookingOnly: true };
+  }
+
   if (order.fulfillmentStatus === 'FULFILLED' || (order.allocatedVouchers && order.allocatedVouchers.length > 0)) {
     const existingVouchers = await VoucherCode.find({
       orderId: order._id,
@@ -78,6 +85,10 @@ export const allocateVouchersForOrder = async ({ order, user, session = null }) 
   try {
     // 2. Process each line item with strict product ID & voucherType enforcement
     for (const item of order.items || []) {
+      // PTE Exam Booking service line items are paid services that never ship a
+      // voucher code — skip voucher allocation entirely for them.
+      if (normalizeVoucherType(item.voucherType) === 'PTEBOOKING') continue;
+
       const expectedProductId = item.productId?.toString ? item.productId.toString() : String(item.productId);
       let expectedVoucherType = normalizeVoucherType(item.voucherType);
 
@@ -195,17 +206,41 @@ export const allocateVouchersForOrder = async ({ order, user, session = null }) 
   }
 
   // 4. Update order fulfillment snapshot
-  order.fulfillmentStatus = 'FULFILLED';
-  order.fulfillmentError = null;
-  order.orderStatus = 'FULFILLED';
-  order.paymentStatus = 'PAID';
-  order.allocatedVouchers = assignedVouchers.map((v) => ({
-    voucherId: v._id,
-    code: v.code,
-    productId: v.productId,
-    voucherType: v.voucherType,
-    allocatedAt: new Date(),
-  }));
+  if (hasPteBookingItems && !hasVoucherItems) {
+    // Pure PTE Booking order — NEVER fulfilled at payment time!
+    // Creates a booking request; order stays in PROCESSING until admin explicitly confirms booking.
+    order.fulfillmentStatus = 'PROCESSING';
+    order.fulfillmentError = null;
+    order.orderStatus = 'PROCESSING';
+    order.paymentStatus = 'PAID';
+    order.allocatedVouchers = [];
+  } else if (hasPteBookingItems && hasVoucherItems) {
+    // Mixed order (vouchers + booking service) — vouchers allocated, but overall order is still PROCESSING for the service
+    order.fulfillmentStatus = 'PROCESSING';
+    order.fulfillmentError = null;
+    order.orderStatus = 'PROCESSING';
+    order.paymentStatus = 'PAID';
+    order.allocatedVouchers = assignedVouchers.map((v) => ({
+      voucherId: v._id,
+      code: v.code,
+      productId: v.productId,
+      voucherType: v.voucherType,
+      allocatedAt: new Date(),
+    }));
+  } else {
+    // Pure voucher order — fulfills immediately
+    order.fulfillmentStatus = 'FULFILLED';
+    order.fulfillmentError = null;
+    order.orderStatus = 'FULFILLED';
+    order.paymentStatus = 'PAID';
+    order.allocatedVouchers = assignedVouchers.map((v) => ({
+      voucherId: v._id,
+      code: v.code,
+      productId: v.productId,
+      voucherType: v.voucherType,
+      allocatedAt: new Date(),
+    }));
+  }
 
   if (session) {
     await order.save({ session });

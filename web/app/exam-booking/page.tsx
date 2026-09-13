@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { PTEExamBookingPage } from '@/components/pte-exam-booking/pte-exam-booking-client';
 import { getWebsiteConfig } from '@/lib/website-config';
+import { getPTEBookingCatalog } from '@/lib/pte-booking-api';
 import { buildMetadata, JsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import { FAQ_LIST } from '@/lib/pte-booking-data';
 
@@ -32,7 +33,11 @@ const faqJsonLd = {
 };
 
 export default async function ExamBookingPage() {
-  const config = await getWebsiteConfig();
+  const [config, pteCatalog] = await Promise.all([
+    getWebsiteConfig(),
+    getPTEBookingCatalog(),
+  ]);
+
   return (
     <>
       <JsonLd data={serviceJsonLd} />
@@ -44,7 +49,7 @@ export default async function ExamBookingPage() {
         ])}
       />
       <Suspense fallback={<div className="min-h-[60vh]" />}>
-        <PTEExamBookingPage products={config.products} />
+        <PTEExamBookingPage products={config.products} catalog={pteCatalog} />
       </Suspense>
     </>
   );

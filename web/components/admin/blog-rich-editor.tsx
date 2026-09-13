@@ -46,15 +46,29 @@ export function BlogRichEditor({
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [mode, setMode] = useState<'rich' | 'source'>('rich');
   const [uploading, setUploading] = useState(false);
-  const lastHtml = useRef(value);
+  // `lastHtml` mirrors the last state we KNOW is in the contentEditable DOM.
+  // It deliberately starts as `null` (nothing written yet) rather than the
+  // initial `value`: callers such as the product editor mount us WITH the
+  // content already populated, and a change-only sync would skip exactly that
+  // value → the editor would render blank even though the data is present.
+  const lastHtml = useRef<string | null>(null);
+  // The <div> node we most recently hydrated. The rich surface is unmounted
+  // and recreated every time the user toggles Source mode, so returning to
+  // Rich mode must rehydrate the fresh node even when `value` did not change.
+  const mountedSurface = useRef<HTMLDivElement | null>(null);
 
-  // Keep the contentEditable DOM in sync only when the value changed elsewhere
-  // (revision restore, source-mode edit) — never on our own keystrokes.
+  // Hydrate the contentEditable DOM from `value` whenever:
+  //   (a) the rich surface first mounts (initial content arrives WITH us),
+  //   (b) it is remounted after a Source-mode round-trip, or
+  //   (c) `value` changed elsewhere (revision restore / external draft reset).
+  // It never writes over the editor's own keystrokes — those flow back through
+  // `emit` (onInput/onBlur), which keeps `lastHtml` in sync with the DOM.
   useEffect(() => {
-    if (mode === 'rich' && ref.current && value !== lastHtml.current) {
-      ref.current.innerHTML = value || '';
-      lastHtml.current = value;
-    }
+    if (mode !== 'rich' || !ref.current) return;
+    if (ref.current === mountedSurface.current && value === lastHtml.current) return;
+    mountedSurface.current = ref.current;
+    ref.current.innerHTML = value || '';
+    lastHtml.current = value;
   }, [value, mode]);
 
   const emit = useCallback(() => {

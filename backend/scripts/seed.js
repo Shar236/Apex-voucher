@@ -39,10 +39,9 @@ const SAMPLE_PRODUCTS = [
     validityMonths: 6,
     inclusions: [
       'Official 100% Genuine Pearson Voucher Code',
-      '2 Scored Official Mock Tests Included (Worth ₹2,200)',
       'Instant Email + WhatsApp Delivery in 10 seconds',
       '6-Month Validity Period',
-      'Free 1-Time Reschedule Guide & Exam Prep Blueprint',
+      '1-Time Reschedule Guide & Exam Prep Blueprint',
     ],
     redemptionSteps: [
       'Visit mypte.pearsonpte.com and create or log in to your account.',

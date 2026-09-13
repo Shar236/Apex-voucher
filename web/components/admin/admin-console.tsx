@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  ArrowLeft, LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, Crown, Film, Megaphone, PencilRuler, History,
+  ArrowLeft, LayoutDashboard, Package, Ticket, Users, ShoppingCart, Tag, Clock, CalendarCheck, Search as SearchIcon, Crown, Film, Megaphone, PencilRuler, History, GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { ApexLogo } from '@/components/apex-logo';
@@ -17,6 +17,7 @@ import { UsersAdmin } from '@/components/admin/users';
 import { FulfillmentsAdmin } from '@/components/admin/fulfillments';
 import { VoucherRequestsAdmin } from '@/components/admin/voucher-requests';
 import { PTEBookingsAdmin } from '@/components/admin/pte-bookings';
+import { PTEExamBookingAdmin } from '@/components/admin/pte-exam-booking-admin';
 import { PromotionsAdmin } from '@/components/admin/promotions';
 import { AuditLogsAdmin } from '@/components/admin/audit-logs';
 import { NotificationsDrawer, useAdminNotifications, type AdminNotificationCounts } from '@/components/admin/notifications';
@@ -41,6 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'products', label: 'Products & Pricing', icon: <Package className="w-4 h-4" /> },
       { id: 'vouchers', label: 'Voucher Inventory', icon: <Ticket className="w-4 h-4" />, badge: 'stockAlerts' },
+      { id: 'pte-exam-booking', label: 'PTE Exam Booking', icon: <GraduationCap className="w-4 h-4" /> },
     ],
   },
   {
@@ -147,6 +149,7 @@ export function AdminConsole() {
             {tab === 'dashboard' && <Dashboard onNavigate={setTab} />}
             {tab === 'products' && <ProductsAdmin />}
             {tab === 'vouchers' && <VouchersAdmin />}
+            {tab === 'pte-exam-booking' && <PTEExamBookingAdmin />}
             {tab === 'orders' && <OrdersAdmin />}
             {tab === 'voucher-requests' && <VoucherRequestsAdmin />}
             {tab === 'fulfillments' && <FulfillmentsAdmin />}

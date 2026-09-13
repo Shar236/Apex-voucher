@@ -82,6 +82,7 @@ import {
 } from '../controllers/awardController.js';
 import { protectAdmin } from '../middleware/auth.js';
 import { mediaUpload, productLogoUpload, productImageUpload, awardMediaUpload } from '../middleware/upload.js';
+import pteBookingProductRoutes from './pteBookingProductRoutes.js';
 
 const r = Router();
 
@@ -201,6 +202,9 @@ r.delete('/awards/:id', deleteAward);
 r.get('/pte-bookings', listPTEBookingRequestsAdmin);
 r.get('/pte-bookings/:id', getPTEBookingRequestAdmin);
 r.patch('/pte-bookings/:id', updatePTEBookingRequestAdmin);
+
+// PTE Exam Booking storefront products + page content (draft/publish + audit).
+r.use(pteBookingProductRoutes);
 
 r.get('/voucher-requests', listVoucherRequestsAdmin);
 r.get('/voucher-requests/:id', getVoucherRequestAdmin);

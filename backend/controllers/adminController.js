@@ -599,7 +599,9 @@ export const dashboardOverview = async (req, res, next) => {
       $or: [{ orderStatus: 'REFUNDED' }, { paymentStatus: 'REFUNDED' }],
     });
 
-    const newPTEBookingRequestsCount = await PTEBookingRequest.countDocuments({ status: 'New' });
+    const newPTEBookingRequestsCount = await PTEBookingRequest.countDocuments({
+      status: { $in: ['New', 'Payment Received', 'Booking Request Pending'] },
+    });
     const recentPTEBookingRequests = await PTEBookingRequest.find()
       .sort({ createdAt: -1 })
       .limit(5)

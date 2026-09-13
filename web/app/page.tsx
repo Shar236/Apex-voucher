@@ -16,6 +16,8 @@ import { listPublicBlogPosts } from '@/lib/blog-api';
 import { buildMetadata, JsonLd } from '@/lib/seo';
 import { siteConfig } from '@/lib/config';
 
+import { getPTEBookingCatalog } from '@/lib/pte-booking-api';
+
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getWebsiteConfig();
   return buildMetadata({
@@ -27,7 +29,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [config, blogResult] = await Promise.all([getWebsiteConfig(), listPublicBlogPosts({ limit: 6 })]);
+  const [config, blogResult, pteCatalog] = await Promise.all([
+    getWebsiteConfig(),
+    listPublicBlogPosts({ limit: 6 }),
+    getPTEBookingCatalog(),
+  ]);
 
   return (
     <>
@@ -38,7 +44,7 @@ export default async function HomePage() {
       <ExamLogoMarquee />
       <ExamCategorySection products={config.products} />
       <FeaturedVouchers products={config.products} />
-      <PTEBookingAssistance products={config.products} />
+      <PTEBookingAssistance catalog={pteCatalog} />
       <HowItWorks />
       <WhyApexVoucher />
       <ReelsSection />

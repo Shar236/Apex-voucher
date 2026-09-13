@@ -6,3 +6,4 @@ export { default as DiscountBadge } from './discount-badge';
 export { default as SectionHeading } from './section-heading';
 export { default as ProviderLogo } from './provider-logo';
 export { default as DeliveryValidityBar } from './delivery-validity-bar';
+export * from './image-lightbox';

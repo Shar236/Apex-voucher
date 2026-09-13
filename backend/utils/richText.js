@@ -31,8 +31,12 @@ export const sanitizeRichHtml = (html) => {
     allowedSchemesByTag: { a: ['https', 'http', 'mailto', 'tel'] },
     disallowedTagsMode: 'discard',
     transformTags: {
-      // Force safe rel/target on outbound links.
-      a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, false),
+      // Force a safe `rel` on outbound links WITHOUT discarding the rest of the
+      // tag. Passing mergeable=false makes simpleTransform REPLACE every
+      // attribute — silently dropping `href`/`target` and leaving dead,
+      // unclickable <a> tags. mergeable=true keeps href/target/title and just
+      // stamps the safe rel.
+      a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, true),
     },
   });
 };

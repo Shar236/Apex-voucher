@@ -14,7 +14,8 @@ import { unitDisplayPrice } from '@/lib/pricing';
 import { PhoneInput } from '@/components/auth/phone-input';
 import { FaqAccordion } from '@/components/blog/faq-accordion';
 import { PTE_INDIAN_CITIES, EXAM_TYPE_OPTIONS, TIME_OPTIONS, BEFORE_YOU_BOOK_CHECKLIST, BOOKING_MISTAKES, FAQ_LIST } from '@/lib/pte-booking-data';
-import type { Product } from '@/lib/types';
+import { PTEBookingAssistance } from '@/components/pte-booking-assistance';
+import type { Product, PTEBookingCatalog } from '@/lib/types';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -54,7 +55,13 @@ interface SubmittedData {
   duplicate: boolean;
 }
 
-export function PTEExamBookingPage({ products }: { products: Product[] }) {
+export function PTEExamBookingPage({
+  products,
+  catalog,
+}: {
+  products: Product[];
+  catalog?: PTEBookingCatalog | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currency } = useCurrency();
@@ -293,6 +300,9 @@ export function PTEExamBookingPage({ products }: { products: Product[] }) {
           </div>
         </div>
       </section>
+
+      {/* Dynamic PTE Exam Booking Services (PTE Academic, PTE Core, PTE Academic UKVI) with Special Booking Prices & Cart Integration */}
+      <PTEBookingAssistance catalog={catalog} />
 
       <section ref={formRef} id="booking-form-section" className="py-16 sm:py-20 bg-neutral-50/60 dark:bg-[#0E0E0E] border-b border-[#EAEAEA] dark:border-[#222]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

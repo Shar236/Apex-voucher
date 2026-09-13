@@ -47,7 +47,10 @@ export function PaymentReturnClient() {
         return null;
       }
       setStatusData(res);
-      const paid = res.paymentStatus === 'PAID' && (res.orderStatus === 'FULFILLED' || res.fulfillmentStatus === 'FULFILLED');
+      const isPte = Boolean(res.isPteBooking || (res.data as { isPteBooking?: boolean })?.isPteBooking);
+      const paid = isPte
+        ? res.paymentStatus === 'PAID'
+        : res.paymentStatus === 'PAID' && (res.orderStatus === 'FULFILLED' || res.fulfillmentStatus === 'FULFILLED');
       if (paid && !celebrated.current) {
         celebrated.current = true;
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
@@ -88,10 +91,15 @@ export function PaymentReturnClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isPaid = statusData?.paymentStatus === 'PAID' && (statusData?.orderStatus === 'FULFILLED' || statusData?.fulfillmentStatus === 'FULFILLED');
-  const isProcessing = statusData?.paymentStatus === 'PAID' && (statusData?.orderStatus === 'PROCESSING' || statusData?.fulfillmentStatus === 'PROCESSING');
+  const isPteBooking = Boolean(statusData?.isPteBooking || (statusData?.data as { isPteBooking?: boolean })?.isPteBooking);
+  const bookingRequest = ((statusData as any)?.bookingRequest || (statusData?.data as any)?.bookingRequest) as
+    | { examType?: string; amountPaid?: number; status?: string }
+    | undefined;
+  const isPtePaid = isPteBooking && statusData?.paymentStatus === 'PAID';
+  const isPaid = !isPteBooking && statusData?.paymentStatus === 'PAID' && (statusData?.orderStatus === 'FULFILLED' || statusData?.fulfillmentStatus === 'FULFILLED');
+  const isProcessing = !isPteBooking && statusData?.paymentStatus === 'PAID' && (statusData?.orderStatus === 'PROCESSING' || statusData?.fulfillmentStatus === 'PROCESSING');
   const isPending = statusData?.paymentStatus === 'PENDING';
-  const order = statusData?.data as { orderNo?: string; emailStatus?: string } | undefined;
+  const order = statusData?.data as { orderNo?: string; total?: number; emailStatus?: string } | undefined;
   const vouchers = (statusData?.vouchers as Array<{ productName?: string; expiryDate: string; code: string }>) || [];
   const emailSent = (statusData?.emailStatus || order?.emailStatus) === 'SENT';
 
@@ -106,7 +114,62 @@ export function PaymentReturnClient() {
           <div className="py-12 space-y-4">
             <RefreshCw className="w-10 h-10 text-accent animate-spin mx-auto" />
             <h2 className="font-heading font-medium text-xl">Checking your payment…</h2>
-            <p className="text-xs text-ink-muted font-normal">We&apos;re confirming your payment with Razorpay and preparing your voucher.</p>
+            <p className="text-xs text-ink-muted font-normal">We&apos;re confirming your payment with Razorpay.</p>
+          </div>
+        ) : isPtePaid ? (
+          <div className="py-4 space-y-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-success flex items-center justify-center mx-auto shadow-md">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <div>
+              <span className="text-xs font-medium uppercase tracking-widest text-[#FF005C] block mb-1">
+                ORDER # {order?.orderNo || orderId}
+              </span>
+              <h2 className="font-heading font-medium text-3xl">Payment Successful</h2>
+              <p className="text-base font-semibold text-neutral-800 dark:text-neutral-100 mt-1">
+                Your PTE booking request has been received.
+              </p>
+              <p className="text-xs text-ink-muted font-normal mt-2 max-w-md mx-auto leading-relaxed">
+                Your payment has been received successfully. Our team will now process your booking request. Your exam is NOT confirmed until our team completes and confirms the booking.
+              </p>
+
+              <div className="mt-4 p-4 rounded-2xl bg-surface-raised border border-line max-w-sm mx-auto text-left space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-ink-muted">Service:</span>
+                  <span className="font-bold text-ink">
+                    {bookingRequest?.examType || 'PTE Exam Booking Assistance'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-ink-muted">Order Number:</span>
+                  <span className="font-bold text-ink">{order?.orderNo || orderId}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-ink-muted">Amount Paid:</span>
+                  <span className="font-bold text-ink">
+                    ₹{Number(order?.total || bookingRequest?.amountPaid || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-ink-muted">Payment Status:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">Paid</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-ink-muted">Booking Status:</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
+                    {bookingRequest?.status === 'Booking Confirmed' ? 'Confirmed' : 'Processing / Pending Confirmation'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => router.push('/account?tab=pte-bookings')}
+              className="w-full py-4 rounded-2xl bg-[#FF005C] hover:bg-[#E00052] text-white font-medium text-sm shadow-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <span>View Booking Request in Account →</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         ) : isPaid ? (
           <div className="py-4 space-y-6">
@@ -175,7 +238,9 @@ export function PaymentReturnClient() {
                 {error
                   ? error
                   : isPending
-                    ? 'If money was deducted, your voucher will appear here and in your Candidate Vault automatically within a few minutes. You will not be charged twice.'
+                    ? isPteBooking
+                      ? 'If money was deducted, your booking request will appear in your account automatically within a few minutes. You will not be charged twice.'
+                      : 'If money was deducted, your voucher will appear here and in your Candidate Vault automatically within a few minutes. You will not be charged twice.'
                     : 'No completed payment was found for this order. If you were charged, it will be auto-refunded by Razorpay.'}
               </p>
             </div>
@@ -189,8 +254,8 @@ export function PaymentReturnClient() {
               >
                 Refresh status
               </button>
-              <Link href="/account" className="flex-1 py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium text-xs transition-colors flex items-center justify-center">
-                Candidate Vault
+              <Link href={isPteBooking ? '/account?tab=pte-bookings' : '/account'} className="flex-1 py-3.5 rounded-2xl bg-accent hover:bg-accent-hover text-white font-medium text-xs transition-colors flex items-center justify-center">
+                {isPteBooking ? 'My Bookings' : 'Candidate Vault'}
               </Link>
             </div>
           </div>

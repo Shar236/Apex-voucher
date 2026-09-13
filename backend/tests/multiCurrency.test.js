@@ -20,6 +20,7 @@ dotenv.config();
 // Deterministic tests: disable outbound IP-geo lookups (headers + fallback
 // only) and transactional email BEFORE config modules are imported.
 process.env.GEO_IP_API_URL = '';
+process.env.GEO_IP_API_URL_FALLBACK = '';
 process.env.SMTP_HOST = '';
 process.env.SMTP_USER = '';
 process.env.SMTP_PASSWORD = '';

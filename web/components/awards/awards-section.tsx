@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Trophy, Play, X, ExternalLink, Calendar, Building2, ChevronRight, Star, Sparkles, Loader2, TriangleAlert,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { resolveImageSrc } from '@/lib/cloudinary';
 import { awardApi } from '@/lib/api';
@@ -103,9 +104,13 @@ function AwardCard({ award, onView }: { award: Award; onView: (a: Award) => void
   );
 }
 
-function AwardDetailModal({ award, onClose, onPlay }: { award: Award; onClose: () => void; onPlay: (a: Award) => void }) {
+function AwardDetailModal({ award, onClose }: { award: Award; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [fullImage, setFullImage] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [videoKey, setVideoKey] = useState(0);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -122,6 +127,20 @@ function AwardDetailModal({ award, onClose, onPlay }: { award: Award; onClose: (
     };
   }, [onClose]);
 
+  const startVideo = () => {
+    setVideoError(false);
+    setVideoLoading(true);
+    setPlaying(true);
+  };
+
+  const retryVideo = () => {
+    setVideoError(false);
+    setVideoLoading(true);
+    setVideoKey((k) => k + 1);
+  };
+
+  const showVideo = playing && !!award.videoUrl;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div role="dialog" aria-modal="true" aria-labelledby="award-modal-title" className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl bg-surface border border-line shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
@@ -129,8 +148,53 @@ function AwardDetailModal({ award, onClose, onPlay }: { award: Award; onClose: (
           <X className="w-5 h-5" />
         </button>
         <div className="relative aspect-video overflow-hidden bg-surface-sunken">
-          <AwardImage award={award} width={1600} eager className="w-full h-full" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" aria-hidden="true" />
+          {showVideo && !videoError ? (
+            <>
+              <video
+                key={videoKey}
+                src={award.videoUrl}
+                poster={award.videoThumbnail || (award.imageUrl ? resolveImageSrc(award.imageUrl) : undefined)}
+                controls
+                autoPlay
+                playsInline
+                controlsList="nodownload"
+                preload="metadata"
+                onCanPlay={() => setVideoLoading(false)}
+                onPlaying={() => setVideoLoading(false)}
+                onError={() => { setVideoLoading(false); setVideoError(true); }}
+                className="w-full h-full object-contain bg-black"
+              >
+                Your browser does not support embedded videos.
+              </video>
+              {videoLoading && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/45 pointer-events-none" aria-live="polite">
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  <p className="text-[11px] font-medium text-white/85">Loading video…</p>
+                </div>
+              )}
+            </>
+          ) : showVideo && videoError ? (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-4 sm:px-6 gap-3 bg-[#0B0D12]" role="alert">
+              <TriangleAlert className="w-8 h-8 text-amber-400" />
+              <div>
+                <p className="text-sm font-medium text-white">This video could not be loaded.</p>
+                <p className="text-xs text-neutral-400 mt-1">Please try again or check back soon.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={retryVideo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-white text-[11px] font-medium hover:bg-accent-hover transition-colors cursor-pointer">
+                  Retry
+                </button>
+                <button type="button" onClick={() => { setPlaying(false); setVideoError(false); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-white/20 transition-colors cursor-pointer">
+                  <ImageIcon className="w-3.5 h-3.5" /> Show Image
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <AwardImage award={award} width={1600} eager className="w-full h-full" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" aria-hidden="true" />
+            </>
+          )}
           <div className="absolute bottom-4 left-4 sm:bottom-5 sm:left-6 flex items-center gap-2 flex-wrap">
             <span className="px-3 py-1 rounded-full bg-accent text-white text-[10px] font-medium uppercase tracking-wider">{award.featured ? '★ Featured' : award.category || 'Recognition'}</span>
             {award.year && (
@@ -139,10 +203,19 @@ function AwardDetailModal({ award, onClose, onPlay }: { award: Award; onClose: (
               </span>
             )}
           </div>
-          {award.imageUrl && (
-            <button type="button" onClick={() => setFullImage(true)} className="absolute bottom-4 right-4 sm:bottom-5 sm:right-6 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-accent transition-colors cursor-pointer">
-              <ExternalLink className="w-3.5 h-3.5" /> Full Size
-            </button>
+          {!showVideo && (award.videoUrl || award.imageUrl) && (
+            <div className="absolute bottom-3 right-3 sm:bottom-5 sm:right-6 flex items-center justify-end flex-wrap gap-2 max-w-[calc(100%-1.5rem)]">
+              {award.videoUrl && (
+                <button type="button" onClick={startVideo} aria-label="Play award video" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-accent transition-colors cursor-pointer">
+                  <Play className="w-3.5 h-3.5 fill-current" /> Play Video
+                </button>
+              )}
+              {award.imageUrl && (
+                <button type="button" onClick={() => setFullImage(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-accent transition-colors cursor-pointer">
+                  <ExternalLink className="w-3.5 h-3.5" /> Full Size
+                </button>
+              )}
+            </div>
           )}
         </div>
         <div className="p-5 sm:p-8 pt-6">
@@ -167,11 +240,6 @@ function AwardDetailModal({ award, onClose, onPlay }: { award: Award; onClose: (
           <p className="text-sm sm:text-[15px] font-medium text-ink-muted leading-relaxed whitespace-pre-wrap">
             {award.description || 'No additional details available for this achievement yet.'}
           </p>
-          {award.videoUrl && (
-            <button type="button" onClick={() => onPlay(award)} className="mt-6 inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-accent hover:bg-accent-hover text-white font-medium text-sm transition-colors cursor-pointer">
-              <Play className="w-4 h-4 fill-current" /> Watch Award Video
-            </button>
-          )}
         </div>
       </div>
 
@@ -188,69 +256,6 @@ function AwardDetailModal({ award, onClose, onPlay }: { award: Award; onClose: (
   );
 }
 
-function AwardVideoModal({ award, onClose }: { award: Award; onClose: () => void }) {
-  const [videoError, setVideoError] = useState(false);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-label={`Video: ${award.title}`} className="relative w-full max-w-2xl rounded-3xl overflow-hidden bg-[#0B0D12] border border-white/10 shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
-        <button type="button" onClick={onClose} aria-label="Close video player" className="absolute top-3 right-3 z-20 p-2.5 rounded-full bg-black/60 text-white hover:bg-accent transition-colors cursor-pointer">
-          <X className="w-5 h-5" />
-        </button>
-        <div className="w-full aspect-video bg-black">
-          {videoError ? (
-            <div className="w-full h-full flex flex-col items-center justify-center text-center px-6 space-y-2">
-              <TriangleAlert className="w-8 h-8 text-amber-400" />
-              <p className="text-sm text-white">This video could not be loaded.</p>
-              <p className="text-xs text-neutral-400">Please try again later or check back soon.</p>
-            </div>
-          ) : (
-            <video
-              src={award.videoUrl}
-              poster={award.videoThumbnail || resolveImageSrc(award.imageUrl || '')}
-              controls
-              autoPlay
-              playsInline
-              controlsList="nodownload"
-              preload="metadata"
-              onError={() => setVideoError(true)}
-              className="w-full h-full object-contain"
-            >
-              Your browser does not support embedded videos.
-            </video>
-          )}
-        </div>
-        <div className="p-4 sm:p-5 bg-surface flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="font-heading font-medium text-sm sm:text-base text-ink line-clamp-2">{award.title}</p>
-            {award.organization && (
-              <p className="text-[11px] font-normal text-ink-muted mt-0.5 flex items-center gap-1">
-                <Building2 className="w-3 h-3 text-accent" /> {award.organization}
-              </p>
-            )}
-          </div>
-          <a href={award.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent/8 text-accent text-[11px] font-medium border border-accent/25 shrink-0 hover:bg-accent/15 transition-colors">
-            <ExternalLink className="w-3.5 h-3.5" /> Open
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function AwardsSection({ initialAwards, total, featuredCount }: { initialAwards: Award[]; total: number; featuredCount: number }) {
   const [awards, setAwards] = useState<Award[]>(initialAwards);
   const [loading, setLoading] = useState(false);
@@ -258,7 +263,6 @@ export function AwardsSection({ initialAwards, total, featuredCount }: { initial
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialAwards.length < total);
   const [selectedAward, setSelectedAward] = useState<Award | null>(null);
-  const [playVideo, setPlayVideo] = useState<Award | null>(null);
 
   const loadMore = async () => {
     setLoading(true);
@@ -395,13 +399,8 @@ export function AwardsSection({ initialAwards, total, featuredCount }: { initial
           </>
         )}
 
-        {playVideo && !selectedAward && <AwardVideoModal award={playVideo} onClose={() => setPlayVideo(null)} />}
         {selectedAward && (
-          <AwardDetailModal
-            award={selectedAward}
-            onClose={() => setSelectedAward(null)}
-            onPlay={(a) => { setSelectedAward(null); setPlayVideo(a); }}
-          />
+          <AwardDetailModal award={selectedAward} onClose={() => setSelectedAward(null)} />
         )}
       </div>
     </section>

@@ -1,4 +1,4 @@
-import { PTEBookingRequest, PTE_EXAM_TYPES, PTE_BOOKING_STATUSES } from '../models/index.js';
+import { PTEBookingRequest, PTE_EXAM_TYPES, PTE_BOOKING_STATUSES, Order } from '../models/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generatePTEBookingRequestId, escapeRegex } from '../utils/index.js';
 import {
@@ -183,6 +183,29 @@ export const updateBookingRequestStatus = async (id, { status, adminNotes, confi
     if (!PTE_BOOKING_STATUSES.includes(status)) {
       throw new AppError('Invalid status value', 400, 'VALIDATION_ERROR');
     }
+
+    if (status === 'Booking Confirmed') {
+      const mergedConfirmation = {
+        ...(booking.confirmationDetails || {}),
+        ...(confirmationDetails || {}),
+      };
+
+      const ref = String(mergedConfirmation.bookingReference || '').trim();
+      const centre = String(mergedConfirmation.confirmedCentre || '').trim();
+      const city = String(mergedConfirmation.confirmedCity || '').trim();
+      const time = String(mergedConfirmation.confirmedTime || '').trim();
+      const instructions = String(mergedConfirmation.importantInstructions || '').trim();
+      const dateVal = mergedConfirmation.confirmedDate;
+
+      if (!ref || !centre || !city || !time || !instructions || !dateVal) {
+        throw new AppError(
+          'Official Pearson booking details (Official Pearson Booking Reference, Confirmed Test Centre, Confirmed City, Confirmed Date, Confirmed Time, and Important Instructions) are required before confirming the booking.',
+          400,
+          'BOOKING_CONFIRMATION_DETAILS_REQUIRED'
+        );
+      }
+    }
+
     booking.status = status;
   }
 
@@ -212,6 +235,24 @@ export const updateBookingRequestStatus = async (id, { status, adminNotes, confi
 
   await booking.save();
 
+  // Keep linked order synchronized with PTE booking progression
+  if (booking.orderId) {
+    if (status === 'Booking Confirmed') {
+      await Order.findByIdAndUpdate(booking.orderId, {
+        $set: {
+          orderStatus: 'FULFILLED',
+          fulfillmentStatus: 'FULFILLED',
+        },
+      }).catch((err) => console.error('[pte-booking:order-update-failed]', err.message));
+    } else if (status === 'Cancelled / Refund Required') {
+      await Order.findByIdAndUpdate(booking.orderId, {
+        $set: {
+          orderStatus: 'CANCELLED',
+        },
+      }).catch((err) => console.error('[pte-booking:order-update-failed]', err.message));
+    }
+  }
+
   if (isStatusChanged) {
     sendPTEBookingStatusUpdateToCustomer(
       booking,
@@ -236,27 +277,44 @@ export const getPTEBookingStats = async () => {
   const stats = {
     total,
     new: 0,
-    contacted: 0,
+    paymentReceived: 0,
+    pending: 0,
     processing: 0,
+    confirmed: 0,
+    failed: 0,
+    cancelled: 0,
+    contacted: 0,
     inProgress: 0,
     waitingForCustomer: 0,
-    confirmed: 0,
     completed: 0,
-    cancelled: 0,
     rejected: 0,
   };
 
   for (const item of byStatus) {
     const s = String(item._id || '').toLowerCase();
-    if (s === 'new') stats.new = item.count;
-    else if (s === 'contacted') stats.contacted = item.count;
-    else if (s === 'processing') stats.processing = item.count;
-    else if (s.includes('progress')) stats.inProgress = item.count;
-    else if (s.includes('waiting')) stats.waitingForCustomer = item.count;
-    else if (s.includes('confirmed')) stats.confirmed = item.count;
-    else if (s === 'completed') stats.completed = item.count;
-    else if (s === 'cancelled') stats.cancelled = item.count;
-    else if (s === 'rejected') stats.rejected = item.count;
+    if (s === 'payment received') {
+      stats.paymentReceived = item.count;
+      stats.new += item.count;
+    } else if (s.includes('pending') || s === 'new') {
+      stats.pending += item.count;
+      stats.new += item.count;
+    } else if (s.includes('processing') || s.includes('progress')) {
+      stats.processing += item.count;
+      stats.inProgress += item.count;
+    } else if (s.includes('confirmed') || s === 'completed') {
+      stats.confirmed += item.count;
+      stats.completed += item.count;
+    } else if (s.includes('failed') || s.includes('unable')) {
+      stats.failed = item.count;
+    } else if (s.includes('cancel') || s.includes('refund')) {
+      stats.cancelled += item.count;
+    } else if (s === 'contacted') {
+      stats.contacted = item.count;
+    } else if (s.includes('waiting')) {
+      stats.waitingForCustomer = item.count;
+    } else if (s === 'rejected') {
+      stats.rejected = item.count;
+    }
   }
 
   return stats;

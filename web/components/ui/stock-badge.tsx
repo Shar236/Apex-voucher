@@ -19,7 +19,7 @@ export default function StockBadge({ product, className = '' }: { product: Produ
 
   if (isComingSoon)
     return (
-      <Badge tone="info" icon={<Clock className="w-3 h-3" />} className={className}>
+      <Badge tone="info" icon={<Clock className="w-3 h-3 shrink-0" />} className={className} title="Coming Soon">
         Coming Soon
       </Badge>
     );
@@ -27,16 +27,16 @@ export default function StockBadge({ product, className = '' }: { product: Produ
   if (promo) {
     const t = promo.toLowerCase();
     const tone = /best.?sell|popular|top/.test(t) ? 'warn' : /canada|express|australia|ukvi?|study abroad/.test(t) ? 'info' : 'accent';
-    const icon = /best.?sell|popular/.test(t) ? <Flame className="w-3 h-3" /> : null;
+    const icon = /best.?sell|popular/.test(t) ? <Flame className="w-3 h-3 shrink-0" /> : null;
     return (
-      <Badge tone={tone} icon={icon} className={className}>
+      <Badge tone={tone} icon={icon} className={className} title={promo}>
         {promo}
       </Badge>
     );
   }
 
   return (
-    <Badge tone="success" icon={<CheckCircle2 className="w-3 h-3" />} className={className}>
+    <Badge tone="success" icon={<CheckCircle2 className="w-3 h-3 shrink-0" />} className={className} title="In Stock">
       In Stock
     </Badge>
   );

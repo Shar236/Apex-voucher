@@ -105,6 +105,7 @@ export interface Product {
   brand?: string;
   provider?: string;
   category?: string;
+  voucherType?: string;
   shortDescription?: string;
   description?: string;
   richDescription?: string;
@@ -153,6 +154,7 @@ export interface Product {
   relatedProducts?: string[] | Product[];
   seo?: ProductSeo;
   inclusions?: string[];
+  features?: string[];
   /** Legacy free-text redemption steps — fallback only; superseded by redemptionGuide. */
   redemptionSteps?: string[];
   redemptionGuide?: RedemptionGuide;
@@ -162,4 +164,87 @@ export interface Product {
   importantNotes?: string[];
   officialWebsiteUrl?: string;
   officialProductUrl?: string;
+}
+
+// ── PTE Exam Booking (storefront booking service cards) ─────────────────────
+
+export interface PTEBookingFeature {
+  text: string;
+  enabled: boolean;
+}
+
+export interface PTEBookingButton {
+  text: string;
+  href: string;
+  visible: boolean;
+  enabled: boolean;
+}
+
+export interface PTEBookingPricing {
+  bookingPrice: number;
+  standardPrice: number;
+  currency: 'INR' | 'USD';
+  showStandardPrice: boolean;
+  showSavingsBadge: boolean;
+}
+
+/** The public payload shape served by GET /api/pte-booking-catalog. */
+export interface PTEBookingProduct {
+  _id: string;
+  key: string;
+  name: string;
+  shortDescription?: string;
+  serviceLabel?: string;
+  badgeText?: string;
+  badgeTint?: string;
+  image?: string;
+  imageAlt?: string;
+  pricing: PTEBookingPricing;
+  features: PTEBookingFeature[];
+  button: PTEBookingButton;
+  displayOrder?: number;
+}
+
+export interface PTEBookingPageContent {
+  brand?: { showPearsonLogo?: boolean; badgeText?: string };
+  hero?: { heading?: string; highlight?: string; subtitle?: string };
+  notice?: { enabled?: boolean; title?: string; description?: string };
+  bottomBar?: {
+    cards?: Array<{ title?: string; description?: string; icon?: string }>;
+    button?: { text?: string; href?: string; visible?: boolean };
+  };
+}
+
+export interface PTEBookingCatalog {
+  success: boolean;
+  products: PTEBookingProduct[];
+  page: PTEBookingPageContent;
+}
+
+/** Admin document shape (adds status/active/audit fields, never public). */
+export interface AdminPTEBookingProduct extends PTEBookingProduct {
+  status?: 'draft' | 'published';
+  active?: boolean;
+  imagePublicId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  auditHistory?: Array<{
+    action: string;
+    adminEmail?: string;
+    timestamp?: string;
+    changes?: Record<string, unknown>;
+  }>;
+}
+
+export interface AdminPTEBookingConfig {
+  status?: 'draft' | 'published';
+  content?: PTEBookingPageContent;
+  updatedBy?: string;
+  updatedAt?: string;
+  auditHistory?: Array<{
+    action: string;
+    adminEmail?: string;
+    timestamp?: string;
+    changes?: Record<string, unknown>;
+  }>;
 }
