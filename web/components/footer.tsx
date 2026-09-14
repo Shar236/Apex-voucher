@@ -134,7 +134,7 @@ export function Footer({
                   className="leading-snug transition-colors hover:text-accent"
                   aria-label="View Apex Institute on Google Maps"
                 >
-                  near ROSHAN LAL SHOWROOM, Badhni Kalan, Punjab 142037
+                  Near ROSHAN LAL SHOWROOM, Badhni Kalan, Punjab 142037
                 </a>
               </div>
 
